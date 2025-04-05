@@ -25,6 +25,8 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
     min_ra, max_ra = float('inf'), float('-inf')
     min_dec, max_dec = float('inf'), float('-inf')
 
+    grand_total_exposure = sum([rect['total_exposure_time'] for rect in rectangles])
+
     # Plot each rectangle
     for rect in rectangles:
         # Convert RA to degrees for consistency (RA is usually in hours, 1 hour = 15 degrees)
@@ -56,9 +58,18 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
         # Translate rectangle to center position
         final_points = rotated_points + np.array([ra_deg, dec_deg])
 
-        # Draw the rectangle
+        # Draw the rectangle.  Make the alpha value of a subframe low,
+        # unless exposure time is over a minute.
+        alpha = min(0.5, 50 * rect['total_exposure_time'] / grand_total_exposure)
+
+        # if rect['total_exposure_time'] < 60:
+        #alpha = 20 / len(rectangles)
+        #facecolor = 'blue'
+        # else:
+        #     alpha = 0.5
+        #     facecolor = 'blue'
         polygon = patches.Polygon(final_points, closed=True,
-                                  edgecolor='blue', facecolor=facecolor, alpha=20 / len(rectangles), zorder=3)
+                                  edgecolor='blue', facecolor=facecolor, alpha=alpha, zorder=3)
         ax.add_patch(polygon)
 
         # Mark the center point
@@ -76,7 +87,7 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
         max_dec = max(max_dec, rect_max_dec)
 
     # Add some padding to the plot
-    padding = max(max_ra - min_ra, max_dec - min_dec) * 2  # 0.5 # Adjust this number to adjust padding
+    padding = max(max_ra - min_ra, max_dec - min_dec) * 0.5 # Adjust this number to adjust padding
     plot_min_ra = min_ra - padding
     plot_max_ra = max_ra + padding
     plot_min_dec = min_dec - padding

@@ -144,6 +144,10 @@ def update(directory: str):
         if is_hidden(file):
             continue
 
+        if "/lights/" in str(file):
+            # Skip lights frames for now!
+            continue
+
         relative_path = file.relative_to(dir)
 
         if any([desc for desc in manifest.files if desc.pathname == str(relative_path)]):
@@ -229,32 +233,32 @@ def graph(directory: str):
     """Show a graph of the manifest."""
     manifest = read_manifest(directory)
     if not manifest:
-       return
+        return
 
     click.echo(f"Showing a graph of the manifest.  {len(manifest.files)} files in total.")
     rectangles = [{
-       "x": file.solution.calibration.ra,
-       "y": file.solution.calibration.dec,
-       "width": file.solution.calibration.width_arcsec / 3600.0,
-       "height": file.solution.calibration.height_arcsec / 3600.0,
-       "rotation": file.solution.calibration.orientation
+        "x": file.solution.calibration.ra,
+        "y": file.solution.calibration.dec,
+        "width": file.solution.calibration.width_arcsec / 3600.0,
+        "height": file.solution.calibration.height_arcsec / 3600.0,
+        "rotation": file.solution.calibration.orientation,
+        "total_exposure_time": file.total_exposure_time,
     } for file in manifest.files]
 
     display_rectangles(rectangles)
     plt.show()
 
-    #location = 'Houston, Texas'
-    #when = '2025-04-04 21:00'
-    #fig, ax = build_star_chart(location, when)
+    # location = 'Houston, Texas'
+    # when = '2025-04-04 21:00'
+    # fig, ax = build_star_chart(location, when)
 
-    #rectangles = [
+    # rectangles = [
     #    {'x': 0, 'y': 0, 'width': 4, 'height': 2, 'rotation': 0},
     #    {'x': 5, 'y': 5, 'width': 3, 'height': 3, 'rotation': 45},
     #    {'x': -3, 'y': 4, 'width': 2, 'height': 5, 'rotation': 30},
     #    {'x': -5, 'y': -2, 'width': 4, 'height': 1, 'rotation': 15}
-    #]
-    #plot_rectangles(fig, ax, rectangles, facecolor='red')
-
+    # ]
+    # plot_rectangles(fig, ax, rectangles, facecolor='red')
 
 
 if __name__ == '__main__':
