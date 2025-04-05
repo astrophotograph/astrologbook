@@ -11,8 +11,7 @@ from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from alog.graph import display_rectangles, plot_rectangles
-from starmap.starmap import build_star_chart
+from alog.graph import display_rectangles_and_stars as display_rectangles
 from utils import is_hidden
 from astropy.io import fits
 
