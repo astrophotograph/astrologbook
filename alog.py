@@ -1,5 +1,7 @@
 import concurrent.futures
 import hashlib
+import random
+import time
 
 import click
 from pathlib import Path
@@ -47,9 +49,14 @@ class Settings(BaseSettings):
 
 
 def get_file_description(dir: Path, pathname: Path) -> FileDescription:
+    msg = ''
+    start = time.perf_counter()
     with open(pathname, 'rb') as f:
         # Calculate the SHA256 hash of the file
         sha256_hash = hashlib.sha256(f.read()).hexdigest()
+    elapsed = time.perf_counter() - start
+    msg += f' Hash elapsed: {elapsed:.2f}s. '
+    start = time.perf_counter()
     with fits.open(pathname) as hdul:
         exposure_time = hdul[0].header.get('EXPTIME', 0)
         instrument = hdul[0].header.get('INSTRUME', '')
@@ -66,10 +73,16 @@ def get_file_description(dir: Path, pathname: Path) -> FileDescription:
             total_exposure_time = exposure_time * stackcnt
 
         # print(hdul[0].header)
+    elapsed = time.perf_counter() - start
+    msg += f'FITS header read: {elapsed:.2f}s. '
 
+    start = time.perf_counter()
     settings = Settings()
     solver = PlateSolve()
     solution = solver.solve(pathname, local_solve=settings.local_solve, index_dir=settings.astrometry_index_dir)
+    elapsed = time.perf_counter() - start
+    msg += f'Plate solver: {elapsed:.2f}s. '
+    print(msg)
 
     # We only store the relative pathname (for now)
     return FileDescription(pathname=str(pathname.relative_to(dir)),
@@ -126,21 +139,9 @@ def update(directory: str):
     def save_manifest():
         manifest_file.write_text(manifest.model_dump_json(indent=2))
 
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-    #     # Start the load operations and mark each future with its URL
-    #     future_to_url = {executor.submit(load_url, url, 60): url for url in URLS}
-    #     for future in concurrent.futures.as_completed(future_to_url):
-    #         url = future_to_url[future]
-    #         try:
-    #             data = future.result()
-    #         except Exception as exc:
-    #             print('%r generated an exception: %s' % (url, exc))
-    #         else:
-    #             print('%r page is %d bytes' % (url, len(data)))
-
-    futures = {}
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-    for file in dir.rglob("*.fit"):
+    files = list(dir.rglob("*.fit"))
+    random.shuffle(files)
+    for file in files:
         if is_hidden(file):
             continue
 
@@ -155,31 +156,24 @@ def update(directory: str):
             continue
 
         click.echo(f"Adding '{relative_path}' to manifest.")
-        # futures[relative_path] = executor.submit(get_file_description, dir, file)
-        desc = get_file_description(dir, file)
+        try:
+            start = time.perf_counter()
+            desc = get_file_description(dir, file)
+            elapsed = time.perf_counter() - start
+            click.echo(f' Elapsed time: {elapsed:.2f}s plate solving {relative_path}')
+        except Exception as e:
+            click.echo(f' Exception while processing {relative_path}: {e}')
+            continue
 
         manifest.files.append(desc)
         count += 1
 
-        # Save manifest every 10 files...
+        # Save manifest every 20 files...
         if count % 10 == 0:
-            click.echo(f"Processed {count} files.  Checkpointing manifest. {len(manifest.files)} files in total")
+            start = time.perf_counter()
             save_manifest()
-            # break
-
-    # for future in concurrent.futures.as_completed(futures):
-    #     relative_path = futures[future]
-    #     try:
-    #         click.echo(f"Processing '{relative_path}' for manifest.")
-    #         desc = future.result()
-    #
-    #         manifest.files.append(desc)
-    #         count += 1
-    #         if count % 10 == 0:
-    #             click.echo(f"Processed {count} files.  Checkpointing manifest")
-    #             save_manifest()
-    #     except Exception as exc:
-    #         click.echo(f"Exception raised for {relative_path}: {exc}")
+            elapsed = time.perf_counter() - start
+            click.echo(f"Processed {count} files.  Checkpointing manifest. {len(manifest.files)} files in total. ({elapsed:.2f}s)")
 
     click.echo(f"Found {count} FITS files.")
 

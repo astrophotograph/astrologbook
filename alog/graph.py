@@ -60,16 +60,14 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
 
         # Draw the rectangle.  Make the alpha value of a subframe low,
         # unless exposure time is over a minute.
-        alpha = min(0.5, 50 * rect['total_exposure_time'] / grand_total_exposure)
+        # alpha = min(0.5, 50 * rect['total_exposure_time'] / grand_total_exposure)
 
-        # if rect['total_exposure_time'] < 60:
-        #alpha = 20 / len(rectangles)
-        #facecolor = 'blue'
-        # else:
-        #     alpha = 0.5
-        #     facecolor = 'blue'
+        if rect['total_exposure_time'] < 60:
+            alpha = min(1.0, 20 / len(rectangles))
+        else:
+            alpha = 0.5
         polygon = patches.Polygon(final_points, closed=True,
-                                  edgecolor='blue', facecolor=facecolor, alpha=alpha, zorder=3)
+                                  edgecolor='blue', facecolor='blue', alpha=alpha, zorder=3)
         ax.add_patch(polygon)
 
         # Mark the center point
