@@ -1,43 +1,20 @@
-import concurrent.futures
 import hashlib
+import itertools
 import random
 import time
-
-import click
 from pathlib import Path
 
+import click
 import humanize
-import itertools
-
-from matplotlib import pyplot as plt
-from pydantic import BaseModel
+from astropy.io import fits
+from erewhon_astro import PlateSolve
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from alog.graph import display_rectangles_and_stars as display_rectangles
+from alog.graph import display_rectangles_and_stars
+from alog.models import ImageRectangle, FileDescription, Manifest
+from alog.graphplot import plot_graph
 from utils import is_hidden
-from astropy.io import fits
 
-from erewhon_astro import PlateSolve, Solution
-
-
-class FileDescription(BaseModel):
-    pathname: str
-    hash: str
-    instrument: str = ''
-    total_exposure_time: float = 0.0
-    ra: float = 0.0
-    dec: float = 0.0
-    # gain: float = 0.0
-    # target: str = ''
-    stackcnt: int = 0
-    exposure_time: float = 0.0
-    axis1: float = 0.0
-    axis2: float = 0.0
-    solution: Solution | None = None
-
-
-class Manifest(BaseModel):
-    files: list[FileDescription] = []
 
 
 class Settings(BaseSettings):
@@ -173,7 +150,8 @@ def update(directory: str):
             start = time.perf_counter()
             save_manifest()
             elapsed = time.perf_counter() - start
-            click.echo(f"Processed {count} files.  Checkpointing manifest. {len(manifest.files)} files in total. ({elapsed:.2f}s)")
+            click.echo(
+                f"Processed {count} files.  Checkpointing manifest. {len(manifest.files)} files in total. ({elapsed:.2f}s)")
 
     click.echo(f"Found {count} FITS files.")
 
@@ -230,29 +208,54 @@ def graph(directory: str):
         return
 
     click.echo(f"Showing a graph of the manifest.  {len(manifest.files)} files in total.")
-    rectangles = [{
-        "x": file.solution.calibration.ra,
-        "y": file.solution.calibration.dec,
-        "width": file.solution.calibration.width_arcsec / 3600.0,
-        "height": file.solution.calibration.height_arcsec / 3600.0,
-        "rotation": file.solution.calibration.orientation,
-        "total_exposure_time": file.total_exposure_time,
-    } for file in manifest.files]
+    rectangles = [
+        ImageRectangle(x=file.solution.calibration.ra, y=file.solution.calibration.dec,
+                       width=file.solution.calibration.width_arcsec / 3600.0,
+                       height=file.solution.calibration.height_arcsec / 3600.0,
+                       rotation=file.solution.calibration.orientation, total_exposure_time=file.total_exposure_time) for
+        file in manifest.files]
 
-    display_rectangles(rectangles)
-    plt.show()
+    display_rectangles_and_stars(rectangles)
+
+    # plt.show()
+
+    # rectangles = [{
+    #     "x": file.solution.calibration.ra,
+    #     "y": file.solution.calibration.dec,
+    #     "width": file.solution.calibration.width_arcsec / 3600.0,
+    #     "height": file.solution.calibration.height_arcsec / 3600.0,
+    #     "rotation": file.solution.calibration.orientation,
+    #     "total_exposure_time": file.total_exposure_time,
+    # } for file in manifest.files]
+    #
+    # display_rectangles(rectangles)
+    # plt.show()
 
     # location = 'Houston, Texas'
     # when = '2025-04-04 21:00'
     # fig, ax = build_star_chart(location, when)
 
-    # rectangles = [
-    #    {'x': 0, 'y': 0, 'width': 4, 'height': 2, 'rotation': 0},
-    #    {'x': 5, 'y': 5, 'width': 3, 'height': 3, 'rotation': 45},
-    #    {'x': -3, 'y': 4, 'width': 2, 'height': 5, 'rotation': 30},
-    #    {'x': -5, 'y': -2, 'width': 4, 'height': 1, 'rotation': 15}
-    # ]
-    # plot_rectangles(fig, ax, rectangles, facecolor='red')
+
+
+@manifest.command()
+@click.option("-d", "--directory", default=".", help="The directory to operate in.")
+def graph2(directory: str):
+    """Show a graph of the manifest."""
+    manifest = read_manifest(directory)
+    if not manifest:
+        return
+
+    click.echo(f"Showing a graph of the manifest.  {len(manifest.files)} files in total.")
+    rectangles = [
+        ImageRectangle(x=file.solution.calibration.ra,
+                       y=file.solution.calibration.dec,
+                       # centerx=file.solution.calibration.centerx,
+                       width=file.solution.calibration.width_arcsec / 3600.0,
+                       height=file.solution.calibration.height_arcsec / 3600.0,
+                       rotation=file.solution.calibration.orientation, total_exposure_time=file.total_exposure_time) for
+        file in manifest.files]
+
+    plot_graph(rectangles)
 
 
 if __name__ == '__main__':

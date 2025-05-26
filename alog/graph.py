@@ -6,8 +6,10 @@ from skyfield.api import Star, load, wgs84
 from skyfield.data import hipparcos
 from skyfield.named_stars import named_star_dict
 
+from alog.models import ImageRectangle
 
-def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=10.0):
+
+def display_rectangles_and_stars(rectangles: list[ImageRectangle], facecolor='blue', magnitude_limit=10.0):
     """
     Display rectangles and visible stars on a celestial chart.
     
@@ -25,17 +27,17 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
     min_ra, max_ra = float('inf'), float('-inf')
     min_dec, max_dec = float('inf'), float('-inf')
 
-    grand_total_exposure = sum([rect['total_exposure_time'] for rect in rectangles])
+    grand_total_exposure = sum([rect.total_exposure_time for rect in rectangles])
 
     # Plot each rectangle
     for rect in rectangles:
         # Convert RA to degrees for consistency (RA is usually in hours, 1 hour = 15 degrees)
-        ra_deg = rect['x'] * 15 if rect['x'] < 24 else rect['x']
-        dec_deg = rect['y']
+        ra_deg = rect.x * 15 if rect.x < 24 else rect.x
+        dec_deg = rect.y
 
-        width_deg = rect['width']
-        height_deg = rect['height']
-        angle_deg = rect['rotation']
+        width_deg = rect.width
+        height_deg = rect.height
+        angle_deg = rect.rotation
         angle_rad = math.radians(angle_deg)
 
         # Create a rectangle centered at origin
@@ -62,7 +64,7 @@ def display_rectangles_and_stars(rectangles, facecolor='blue', magnitude_limit=1
         # unless exposure time is over a minute.
         # alpha = min(0.5, 50 * rect['total_exposure_time'] / grand_total_exposure)
 
-        if rect['total_exposure_time'] < 60:
+        if rect.total_exposure_time < 60:
             alpha = min(1.0, 20 / len(rectangles))
         else:
             alpha = 0.5

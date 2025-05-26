@@ -1,0 +1,10 @@
+Commands to implement:
+
+- [X] manifest update
+  creates or updates manifest in current directory.
+  scans all fit files by default
+- [X] manifest graph
+- [X] manifest summary
+
+- [ ] manifest upload - using manifest, bundles raw images and uploads them to database and S3
+
