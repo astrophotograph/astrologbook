@@ -3,6 +3,7 @@ import itertools
 import random
 import time
 from pathlib import Path
+from pprint import pprint
 
 import click
 import humanize
@@ -15,6 +16,7 @@ from alog.models import ImageRectangle, FileDescription, Manifest
 from alog.graphplot import plot_graph
 from utils import is_hidden
 
+from astroquery.simbad import Simbad
 
 
 class Settings(BaseSettings):
@@ -236,7 +238,6 @@ def graph(directory: str):
     # fig, ax = build_star_chart(location, when)
 
 
-
 @manifest.command()
 @click.option("-d", "--directory", default=".", help="The directory to operate in.")
 def graph2(directory: str):
@@ -256,6 +257,72 @@ def graph2(directory: str):
         file in manifest.files]
 
     plot_graph(rectangles)
+
+
+@cli.command()
+@click.argument("object_name")
+def lookup(object_name: str):
+    """Look up an astronomical object in Simbad database."""
+    click.echo(f"Looking up {object_name} in Simbad database...")
+    
+    # Customize Simbad query to include more fields
+    simbad = Simbad()
+    # rvz_value
+    simbad.add_votable_fields('oid', 'ra', 'dec', 'plx_value', 'pmra', 'pmdec',
+                                    'sp_type', 'V', 'otype')
+    # mesDistance
+    
+    try:
+        result_table = simbad.query_object(object_name)
+        
+        if result_table is None or len(result_table) == 0:
+            click.echo(f"No results found for '{object_name}'")
+            return
+            
+        # Display the main object information
+        obj = result_table[0]
+        pprint(obj)
+        click.echo(f"\nObject: {obj['main_id'].decode() if isinstance(obj['main_id'], bytes) else obj['main_id']}")
+        click.echo(f"Type: {obj['otype'].decode() if isinstance(obj['otype'], bytes) else obj['otype']}")
+        
+        # Coordinates
+        ra_deg = obj['ra']
+        dec_deg = obj['dec']
+        click.echo(f"RA: {ra_deg:.6f}° ({obj['ra']})")
+        click.echo(f"DEC: {dec_deg:.6f}° ({obj['dec']})")
+        
+        # Optional information (may not be available for all objects)
+        if obj['plx_value'] is not None and obj['plx_value'] != 0:
+            dist_pc = 1000.0 / obj['plx_value']
+            dist_ly = dist_pc * 3.26156
+            click.echo(f"Distance: {dist_pc:.2f} parsecs ({dist_ly:.2f} light years)")
+        
+        if obj['sp_type'] is not None:
+            click.echo(f"Spectral Type: {obj['sp_type'].decode() if isinstance(obj['sp_type'], bytes) else obj['sp_type']}")
+        
+        if obj['V'] is not None:
+            click.echo(f"Visual Magnitude: {obj['V']:.2f}")
+            
+        # Proper motion if available
+        if obj['pmra'] is not None and obj['pmdec'] is not None and obj['pmra'] != '--' and obj['pmdec'] != '--':
+            click.echo(f"Proper Motion: RA {obj['pmra']:.2f} mas/yr, DEC {obj['pmdec']:.2f} mas/yr")
+            
+        # if not obj['RV_VALUE'] is None:
+        #     click.echo(f"Radial Velocity: {obj['RV_VALUE']:.2f} km/s")
+            
+        # Show some additional identifiers
+        other_names = simbad.query_objectids(object_name)
+        if other_names is not None and len(other_names) > 1:
+            click.echo("\nAlternative designations:")
+            # Show up to 5 alternative names
+            for i, name in enumerate(other_names[:5]):
+                id_name = name['id'].decode() if isinstance(name['id'], bytes) else name['id']
+                click.echo(f"  • {id_name}")
+            if len(other_names) > 5:
+                click.echo(f"  ... and {len(other_names) - 5} more identifiers")
+                
+    except Exception as e:
+        click.echo(f"Error querying Simbad: {e}")
 
 
 if __name__ == '__main__':
