@@ -267,10 +267,9 @@ def lookup(object_name: str):
     
     # Customize Simbad query to include more fields
     simbad = Simbad()
-    # rvz_value
     simbad.add_votable_fields('oid', 'ra', 'dec', 'plx_value', 'pmra', 'pmdec',
-                                    'sp_type', 'V', 'otype')
-    # mesDistance
+                                   'sp_type', 'V', 'otype',
+                                   'dimensions', 'galdim_majaxis', 'galdim_minaxis', 'galdim_angle')
     
     try:
         result_table = simbad.query_object(object_name)
@@ -290,6 +289,44 @@ def lookup(object_name: str):
         dec_deg = obj['dec']
         click.echo(f"RA: {ra_deg:.6f}° ({obj['ra']})")
         click.echo(f"DEC: {dec_deg:.6f}° ({obj['dec']})")
+
+        # Size information
+        has_size = False
+        
+        # Check for dimensions string first
+        if 'dimensions' in obj.colnames and obj['dimensions'] is not None:
+            dim_str = obj['dimensions'].decode() if isinstance(obj['dimensions'], bytes) else obj['dimensions']
+            if dim_str and dim_str.strip():
+                click.echo(f"Size: {dim_str}")
+                has_size = True
+        
+        # If no dimensions string, check for major/minor axis values
+        if not has_size and 'galdim_majaxis' in obj.colnames and obj['galdim_majaxis'] is not None:
+            major_axis = obj['galdim_majaxis']
+            if major_axis > 0:
+                minor_axis = obj['galdim_minaxis'] if 'galdim_minaxis' in obj.colnames and obj['galdim_minaxis'] is not None else major_axis
+                pa = obj['galdim_angle'] if 'galdim_angle' in obj.colnames and obj['galdim_angle'] is not None else 0
+                
+                # Format size as arcminutes or arcseconds depending on size
+                if major_axis >= 60:
+                    major_arcmin = major_axis / 60
+                    minor_arcmin = minor_axis / 60
+                    click.echo(f"Size: {major_arcmin:.1f}′ × {minor_arcmin:.1f}′ (PA: {pa}°)")
+                else:
+                    click.echo(f"Size: {major_axis:.1f}″ × {minor_axis:.1f}″ (PA: {pa}°)")
+                has_size = True
+        
+        # If no size information was found
+        if not has_size:
+            # For stars and point sources, we typically don't have size
+            if 'otype' in obj.colnames and obj['otype'] is not None:
+                otype = obj['otype'].decode() if isinstance(obj['otype'], bytes) else obj['otype']
+                if 'Star' in otype or '*' in otype:
+                    click.echo("Size: Point source")
+                else:
+                    click.echo("Size: No size information available")
+            else:
+                click.echo("Size: No size information available")
         
         # Optional information (may not be available for all objects)
         if obj['plx_value'] is not None and obj['plx_value'] != 0:
@@ -307,8 +344,8 @@ def lookup(object_name: str):
         if obj['pmra'] is not None and obj['pmdec'] is not None and obj['pmra'] != '--' and obj['pmdec'] != '--':
             click.echo(f"Proper Motion: RA {obj['pmra']:.2f} mas/yr, DEC {obj['pmdec']:.2f} mas/yr")
             
-        # if not obj['RV_VALUE'] is None:
-        #     click.echo(f"Radial Velocity: {obj['RV_VALUE']:.2f} km/s")
+        if 'RV_VALUE' in obj.colnames and obj['RV_VALUE'] is not None:
+            click.echo(f"Radial Velocity: {obj['RV_VALUE']:.2f} km/s")
             
         # Show some additional identifiers
         other_names = simbad.query_objectids(object_name)
