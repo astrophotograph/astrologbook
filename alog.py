@@ -269,6 +269,11 @@ def graph2(directory: str):
 @click.option("--cache", is_flag=True, help="Cache lookup results in a local SQLite database")
 def lookup(object_name: str, output_json: bool = False, cache: bool = False):
     """Look up an astronomical object in Simbad database."""
+    import json
+    import sqlite3
+    import re
+    from datetime import datetime
+    
     click.echo(f"Looking up {object_name} in Simbad database...")
     
     # Initialize cache if requested
@@ -415,6 +420,11 @@ def lookup(object_name: str, output_json: bool = False, cache: bool = False):
         catalogs = _extract_catalog_references([object_data["name"]] + alt_names)
         if catalogs:
             object_data["catalogs"] = catalogs
+            
+        # Extract common name from the list of names
+        common_name = _extract_common_name([object_data["name"]] + alt_names)
+        if common_name:
+            object_data["common_name"] = common_name
         
         # Cache the data if requested
         if cache and conn:
@@ -442,6 +452,65 @@ def lookup(object_name: str, output_json: bool = False, cache: bool = False):
             conn.close()
 
 
+def _extract_common_name(name_list):
+    """Extract the common name of an astronomical object from its identifiers."""
+    # Dictionary of common name patterns with priority (lower number = higher priority)
+    name_patterns = [
+        # Direct named objects like "Orion Nebula", "Andromeda Galaxy", etc.
+        (r'((?:[A-Z][a-z]+\s?)+(?:Nebula|Galaxy|Cluster|Cloud|Star|Pulsar|Quasar|Supernova|Remnant|Void|Group))', 1),
+        
+        # "NAME [Object Name]" pattern used in SIMBAD
+        (r'NAME\s+(.*)', 2),
+        
+        # Popular asterisms and unofficial names
+        (r'ASTERISM\s+(.*)', 3),
+        
+        # Common names like "Sirius", "Betelgeuse", "Polaris", etc.
+        (r'((?:[A-Z][a-z]+){1,2})\s*$', 4),
+        
+        # Colloquial names like "Horsehead Nebula", etc.
+        (r'((?:[A-Z][a-z]+\s?)+)', 5)
+    ]
+    
+    # List to store potential common names with their priority
+    potential_names = []
+    
+    for name in name_list:
+        if name is None:
+            continue
+            
+        name = name.strip()
+        
+        # Check against each pattern
+        for pattern, priority in name_patterns:
+            match = re.search(pattern, name)
+            if match:
+                common_name = match.group(1).strip()
+                
+                # Filter out catalog IDs that might match our patterns
+                # Skip if the name is just a catalog designation
+                if re.match(r'^(M|NGC|IC|HD|HIP|Sh2|B|C|HCG|UGC|Abell|PGC|ESO|LBN|SAO|HR|2MASS)\s*\d+', common_name, re.IGNORECASE):
+                    continue
+                
+                # Skip very short names (likely abbreviations, not common names)
+                if len(common_name) < 3:
+                    continue
+                    
+                # Skip names that are just numbers
+                if re.match(r'^\d+$', common_name):
+                    continue
+                
+                potential_names.append((common_name, priority))
+    
+    # Sort by priority and return the best match
+    potential_names.sort(key=lambda x: x[1])
+    
+    if potential_names:
+        return potential_names[0][0]
+    
+    return None
+
+
 def _extract_catalog_references(name_list):
     """Extract catalog references from a list of object names."""
     # Dictionary to store catalog information
@@ -455,7 +524,7 @@ def _extract_catalog_references(name_list):
         'HD': r'^HD\s*(\d+)',      # Matches: HD1234, HD 1234, etc.
         'HIP': r'^HIP\s*(\d+)',    # Matches: HIP1234, HIP 1234, etc.
         'Sh2': r'^Sh\s*2-(\d+)',   # Matches: Sh2-155, Sh 2-155, etc.
-        'Barnard': r'^B\s*(\d+)',  # Matches: B33, B 33, etc.
+        'Barnard': r'^B\s*(\d+)',  # Matches: B33, B 33, etc. TODO: tighten this up!
         # 'Caldwell': r'^C\s*(\d+)', # Matches: C14, C 14, etc.
         'HCG': r'^HCG\s*(\d+)',    # Matches: HCG92, HCG 92, etc.
         'UGC': r'^UGC\s*(\d+)',    # Matches: UGC12158, UGC 12158, etc.
@@ -511,6 +580,11 @@ def _display_object_info(obj):
     # pprint(obj)
     
     click.echo(f"\nObject: {obj['name']}")
+    
+    # Display common name if available
+    if "common_name" in obj:
+        click.echo(f"Common Name: {obj['common_name']}")
+        
     click.echo(f"Type: {obj['type']}")
     
     # Coordinates
