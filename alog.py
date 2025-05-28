@@ -312,13 +312,26 @@ def lookup(object_name: str, output_json: bool = False, cache: bool = False):
     
     # Customize Simbad query to include more fields
     simbad = Simbad()
-    simbad.add_votable_fields('oid', 'ra', 'dec', 'plx_value', 'pmra', 'pmdec',
-                              'sp_type', 'V', 'otype',
-                              'dimensions', 'galdim_majaxis', 'galdim_minaxis', 'galdim_angle')
-    
+
     try:
-        result_table = simbad.query_object(object_name)
-        
+        # Change the normal query_object to an ADQL query to work around
+        #   "allfluxes" not existing for certain objects.
+        result_table = simbad.query_tap(
+            f"""SELECT basic."main_id", basic."ra", basic."dec", basic."coo_err_maj", 
+                       basic."coo_err_min", basic."coo_err_angle", basic."coo_wavelength", 
+                       basic."coo_bibcode", 
+                       allfluxes."V", 
+                       basic."galdim_minaxis", basic."otype", basic."oid", basic."pmdec", 
+                       basic."galdim_angle", basic."pmra", basic."galdim_majaxis", basic."sp_type", 
+                       basic."plx_value", basic."galdim_minaxis_prec", basic."galdim_wavelength", 
+                       basic."galdim_bibcode", basic."galdim_majaxis_prec", basic."galdim_qual", 
+                       ident."id" AS "matched_id" 
+                  FROM basic 
+                  LEFT JOIN allfluxes ON basic."oid" = allfluxes."oidref" 
+                  JOIN ident ON basic."oid" = ident."oidref" 
+                 WHERE id = '{object_name}'
+              """)
+
         if result_table is None or len(result_table) == 0:
             click.echo(f"No results found for '{object_name}'")
             return
