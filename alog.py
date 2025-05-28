@@ -261,15 +261,55 @@ def graph2(directory: str):
 
 @cli.command()
 @click.argument("object_name")
-def lookup(object_name: str):
+@click.option("--json", "output_json", is_flag=True, help="Output as JSON instead of formatted text")
+@click.option("--cache", is_flag=True, help="Cache lookup results in a local SQLite database")
+def lookup(object_name: str, output_json: bool = False, cache: bool = False):
     """Look up an astronomical object in Simbad database."""
+    import json
+    import sqlite3
+    from datetime import datetime
+    
     click.echo(f"Looking up {object_name} in Simbad database...")
+    
+    # Initialize cache if requested
+    if cache:
+        conn = None
+        try:
+            conn = sqlite3.connect('alog_cache.db')
+            cursor = conn.cursor()
+            # Create cache table if it doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS object_cache (
+                    object_name TEXT PRIMARY KEY,
+                    data TEXT,
+                    timestamp TEXT
+                )
+            ''')
+            
+            # Check if object is in cache
+            cursor.execute("SELECT data FROM object_cache WHERE object_name = ?", (object_name,))
+            cached_data = cursor.fetchone()
+            
+            if cached_data:
+                click.echo("Using cached data...")
+                if output_json:
+                    click.echo(cached_data[0])
+                    return
+                else:
+                    cached_obj = json.loads(cached_data[0])
+                    _display_object_info(cached_obj)
+                    return
+                    
+        except sqlite3.Error as e:
+            click.echo(f"SQLite error: {e}")
+            # Continue with regular lookup if cache fails
+            pass
     
     # Customize Simbad query to include more fields
     simbad = Simbad()
     simbad.add_votable_fields('oid', 'ra', 'dec', 'plx_value', 'pmra', 'pmdec',
-                                   'sp_type', 'V', 'otype',
-                                   'dimensions', 'galdim_majaxis', 'galdim_minaxis', 'galdim_angle')
+                              'sp_type', 'V', 'otype',
+                              'dimensions', 'galdim_majaxis', 'galdim_minaxis', 'galdim_angle')
     
     try:
         result_table = simbad.query_object(object_name)
@@ -278,26 +318,30 @@ def lookup(object_name: str):
             click.echo(f"No results found for '{object_name}'")
             return
             
-        # Display the main object information
+        # Get the main object information
         obj = result_table[0]
-        pprint(obj)
-        click.echo(f"\nObject: {obj['main_id'].decode() if isinstance(obj['main_id'], bytes) else obj['main_id']}")
-        click.echo(f"Type: {obj['otype'].decode() if isinstance(obj['otype'], bytes) else obj['otype']}")
         
-        # Coordinates
-        ra_deg = obj['ra']
-        dec_deg = obj['dec']
-        click.echo(f"RA: {ra_deg:.6f}° ({obj['ra']})")
-        click.echo(f"DEC: {dec_deg:.6f}° ({obj['dec']})")
-
+        # Create a structured object with all the data
+        object_data = {
+            "name": obj['main_id'].decode() if isinstance(obj['main_id'], bytes) else obj['main_id'],
+            "type": obj['otype'].decode() if isinstance(obj['otype'], bytes) else obj['otype'],
+            "coordinates": {
+                "ra": float(obj['ra']),
+                "dec": float(obj['dec']),
+                "ra_str": str(obj['ra']),
+                "dec_str": str(obj['dec'])
+            }
+        }
+        
         # Size information
+        object_data["size"] = {}
         has_size = False
         
         # Check for dimensions string first
         if 'dimensions' in obj.colnames and obj['dimensions'] is not None:
             dim_str = obj['dimensions'].decode() if isinstance(obj['dimensions'], bytes) else obj['dimensions']
             if dim_str and dim_str.strip():
-                click.echo(f"Size: {dim_str}")
+                object_data["size"]["dimensions"] = dim_str
                 has_size = True
         
         # If no dimensions string, check for major/minor axis values
@@ -307,13 +351,17 @@ def lookup(object_name: str):
                 minor_axis = obj['galdim_minaxis'] if 'galdim_minaxis' in obj.colnames and obj['galdim_minaxis'] is not None else major_axis
                 pa = obj['galdim_angle'] if 'galdim_angle' in obj.colnames and obj['galdim_angle'] is not None else 0
                 
-                # Format size as arcminutes or arcseconds depending on size
+                object_data["size"]["major_axis"] = float(major_axis)
+                object_data["size"]["minor_axis"] = float(minor_axis)
+                object_data["size"]["position_angle"] = float(pa)
+                
+                # Also add formatted display values
                 if major_axis >= 60:
                     major_arcmin = major_axis / 60
                     minor_arcmin = minor_axis / 60
-                    click.echo(f"Size: {major_arcmin:.1f}′ × {minor_arcmin:.1f}′ (PA: {pa}°)")
+                    object_data["size"]["formatted"] = f"{major_arcmin:.1f}′ × {minor_arcmin:.1f}′ (PA: {pa}°)"
                 else:
-                    click.echo(f"Size: {major_axis:.1f}″ × {minor_axis:.1f}″ (PA: {pa}°)")
+                    object_data["size"]["formatted"] = f"{major_axis:.1f}″ × {minor_axis:.1f}″ (PA: {pa}°)"
                 has_size = True
         
         # If no size information was found
@@ -322,44 +370,126 @@ def lookup(object_name: str):
             if 'otype' in obj.colnames and obj['otype'] is not None:
                 otype = obj['otype'].decode() if isinstance(obj['otype'], bytes) else obj['otype']
                 if 'Star' in otype or '*' in otype:
-                    click.echo("Size: Point source")
+                    object_data["size"]["type"] = "point_source"
                 else:
-                    click.echo("Size: No size information available")
+                    object_data["size"]["type"] = "unknown"
             else:
-                click.echo("Size: No size information available")
+                object_data["size"]["type"] = "unknown"
         
-        # Optional information (may not be available for all objects)
+        # Optional information
         if obj['plx_value'] is not None and obj['plx_value'] != 0:
             dist_pc = 1000.0 / obj['plx_value']
             dist_ly = dist_pc * 3.26156
-            click.echo(f"Distance: {dist_pc:.2f} parsecs ({dist_ly:.2f} light years)")
+            object_data["distance"] = {
+                "parsecs": float(dist_pc),
+                "light_years": float(dist_ly)
+            }
         
         if obj['sp_type'] is not None:
-            click.echo(f"Spectral Type: {obj['sp_type'].decode() if isinstance(obj['sp_type'], bytes) else obj['sp_type']}")
+            object_data["spectral_type"] = obj['sp_type'].decode() if isinstance(obj['sp_type'], bytes) else obj['sp_type']
         
         if obj['V'] is not None:
-            click.echo(f"Visual Magnitude: {obj['V']:.2f}")
+            object_data["visual_magnitude"] = float(obj['V'])
             
         # Proper motion if available
         if obj['pmra'] is not None and obj['pmdec'] is not None and obj['pmra'] != '--' and obj['pmdec'] != '--':
-            click.echo(f"Proper Motion: RA {obj['pmra']:.2f} mas/yr, DEC {obj['pmdec']:.2f} mas/yr")
+            object_data["proper_motion"] = {
+                "ra": float(obj['pmra']),
+                "dec": float(obj['pmdec'])
+            }
             
         if 'RV_VALUE' in obj.colnames and obj['RV_VALUE'] is not None:
-            click.echo(f"Radial Velocity: {obj['RV_VALUE']:.2f} km/s")
+            object_data["radial_velocity"] = float(obj['RV_VALUE'])
             
-        # Show some additional identifiers
+        # Get alternative identifiers
         other_names = simbad.query_objectids(object_name)
-        if other_names is not None and len(other_names) > 1:
-            click.echo("\nAlternative designations:")
-            # Show up to 5 alternative names
-            for i, name in enumerate(other_names[:5]):
-                id_name = name['id'].decode() if isinstance(name['id'], bytes) else name['id']
-                click.echo(f"  • {id_name}")
-            if len(other_names) > 5:
-                click.echo(f"  ... and {len(other_names) - 5} more identifiers")
+        if other_names is not None and len(other_names) > 0:
+            object_data["alternative_names"] = [
+                name['id'].decode() if isinstance(name['id'], bytes) else name['id']
+                for name in other_names
+            ]
+        
+        # Cache the data if requested
+        if cache and conn:
+            try:
+                json_data = json.dumps(object_data)
+                timestamp = datetime.now().isoformat()
+                cursor.execute(
+                    "INSERT OR REPLACE INTO object_cache (object_name, data, timestamp) VALUES (?, ?, ?)",
+                    (object_name, json_data, timestamp)
+                )
+                conn.commit()
+            except sqlite3.Error as e:
+                click.echo(f"Error caching data: {e}")
+        
+        # Output results based on format choice
+        if output_json:
+            click.echo(json.dumps(object_data, indent=2))
+        else:
+            _display_object_info(object_data)
                 
     except Exception as e:
         click.echo(f"Error querying Simbad: {e}")
+    finally:
+        if cache and conn:
+            conn.close()
+
+
+def _display_object_info(obj):
+    """Helper function to display object information in a formatted way."""
+    # For debugging
+    # pprint(obj)
+    
+    click.echo(f"\nObject: {obj['name']}")
+    click.echo(f"Type: {obj['type']}")
+    
+    # Coordinates
+    ra_deg = obj['coordinates']['ra']
+    dec_deg = obj['coordinates']['dec']
+    click.echo(f"RA: {ra_deg:.6f}° ({obj['coordinates']['ra_str']})")
+    click.echo(f"DEC: {dec_deg:.6f}° ({obj['coordinates']['dec_str']})")
+
+    # Size information
+    if "size" in obj:
+        size = obj["size"]
+        if "dimensions" in size:
+            click.echo(f"Size: {size['dimensions']}")
+        elif "formatted" in size:
+            click.echo(f"Size: {size['formatted']}")
+        elif "type" in size:
+            if size["type"] == "point_source":
+                click.echo("Size: Point source")
+            else:
+                click.echo("Size: No size information available")
+    
+    # Distance
+    if "distance" in obj:
+        click.echo(f"Distance: {obj['distance']['parsecs']:.2f} parsecs ({obj['distance']['light_years']:.2f} light years)")
+    
+    # Spectral type
+    if "spectral_type" in obj:
+        click.echo(f"Spectral Type: {obj['spectral_type']}")
+    
+    # Visual magnitude
+    if "visual_magnitude" in obj:
+        click.echo(f"Visual Magnitude: {obj['visual_magnitude']:.2f}")
+    
+    # Proper motion
+    if "proper_motion" in obj:
+        click.echo(f"Proper Motion: RA {obj['proper_motion']['ra']:.2f} mas/yr, DEC {obj['proper_motion']['dec']:.2f} mas/yr")
+    
+    # Radial velocity
+    if "radial_velocity" in obj:
+        click.echo(f"Radial Velocity: {obj['radial_velocity']:.2f} km/s")
+    
+    # Alternative names
+    if "alternative_names" in obj and len(obj["alternative_names"]) > 1:
+        click.echo("\nAlternative designations:")
+        # Show up to 5 alternative names
+        for i, name in enumerate(obj["alternative_names"][:5]):
+            click.echo(f"  • {name}")
+        if len(obj["alternative_names"]) > 5:
+            click.echo(f"  ... and {len(obj['alternative_names']) - 5} more identifiers")
 
 
 if __name__ == '__main__':
