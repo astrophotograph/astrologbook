@@ -3,10 +3,14 @@ import itertools
 import random
 import time
 from pathlib import Path
-from pprint import pprint
 
 import click
 import humanize
+import json
+import sqlite3
+import re
+from datetime import datetime
+
 from astropy.io import fits
 from erewhon_astro import PlateSolve
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -265,10 +269,6 @@ def graph2(directory: str):
 @click.option("--cache", is_flag=True, help="Cache lookup results in a local SQLite database")
 def lookup(object_name: str, output_json: bool = False, cache: bool = False):
     """Look up an astronomical object in Simbad database."""
-    import json
-    import sqlite3
-    from datetime import datetime
-    
     click.echo(f"Looking up {object_name} in Simbad database...")
     
     # Initialize cache if requested
@@ -403,11 +403,18 @@ def lookup(object_name: str, output_json: bool = False, cache: bool = False):
             
         # Get alternative identifiers
         other_names = simbad.query_objectids(object_name)
+        alt_names = []
         if other_names is not None and len(other_names) > 0:
-            object_data["alternative_names"] = [
+            alt_names = [
                 name['id'].decode() if isinstance(name['id'], bytes) else name['id']
                 for name in other_names
             ]
+            object_data["alternative_names"] = alt_names
+        
+        # Extract catalog information from main ID and alternative names
+        catalogs = _extract_catalog_references([object_data["name"]] + alt_names)
+        if catalogs:
+            object_data["catalogs"] = catalogs
         
         # Cache the data if requested
         if cache and conn:
@@ -433,6 +440,69 @@ def lookup(object_name: str, output_json: bool = False, cache: bool = False):
     finally:
         if cache and conn:
             conn.close()
+
+
+def _extract_catalog_references(name_list):
+    """Extract catalog references from a list of object names."""
+    # Dictionary to store catalog information
+    catalogs = {}
+    
+    # Regular expressions for common catalogs
+    catalog_patterns = {
+        'Messier': r'^M\s*(\d+)',  # Matches: M1, M 1, M31, etc.
+        'NGC': r'^NGC\s*(\d+)',    # Matches: NGC1976, NGC 1976, etc.
+        'IC': r'^IC\s*(\d+)',      # Matches: IC434, IC 434, etc.
+        'HD': r'^HD\s*(\d+)',      # Matches: HD1234, HD 1234, etc.
+        'HIP': r'^HIP\s*(\d+)',    # Matches: HIP1234, HIP 1234, etc.
+        'Sh2': r'^Sh\s*2-(\d+)',   # Matches: Sh2-155, Sh 2-155, etc.
+        'Barnard': r'^B\s*(\d+)',  # Matches: B33, B 33, etc.
+        # 'Caldwell': r'^C\s*(\d+)', # Matches: C14, C 14, etc.
+        'HCG': r'^HCG\s*(\d+)',    # Matches: HCG92, HCG 92, etc.
+        'UGC': r'^UGC\s*(\d+)',    # Matches: UGC12158, UGC 12158, etc.
+        'Abell': r'^Abell\s*(\d+)',# Matches: Abell2151, Abell 2151, etc.
+        'PGC': r'^PGC\s*(\d+)',    # Matches: PGC3589, PGC 3589, etc.
+        'ESO': r'^ESO\s*(\d+)-(\d+)', # Matches: ESO123-16, ESO 123-16, etc.
+        'LBN': r'^LBN\s*(\d+)',    # Matches: LBN123, LBN 123, etc.
+        'SAO': r'^SAO\s*(\d+)',    # Matches: SAO123456, SAO 123456, etc.
+        'HR': r'^HR\s*(\d+)',      # Matches: HR1234, HR 1234, etc.
+        '2MASS': r'^2MASS\s*J(\d+)' # Matches: 2MASS J12345678+1234567
+    }
+    
+    # Process each name
+    for name in name_list:
+        # Skip if None
+        if name is None:
+            continue
+            
+        name = name.strip()
+        
+        # Check against each catalog pattern
+        for catalog, pattern in catalog_patterns.items():
+            matches = re.search(pattern, name, re.IGNORECASE)
+            if matches:
+                if catalog not in catalogs:
+                    catalogs[catalog] = []
+                
+                # Determine the catalog ID based on the regex match
+                if catalog == 'ESO':  # Special case for ESO which has two capture groups
+                    catalog_id = f"{matches.group(1)}-{matches.group(2)}"
+                else:
+                    catalog_id = matches.group(1)
+                
+                if catalog_id not in catalogs[catalog]:
+                    catalogs[catalog].append(catalog_id)
+    
+    # Convert to expected JSON structure
+    result = []
+    for catalog, ids in catalogs.items():
+        for id_value in ids:
+            result.append({
+                "catalog": catalog,
+                "id": id_value,
+                "designation": f"{catalog} {id_value}"
+            })
+    
+    return result
 
 
 def _display_object_info(obj):
@@ -461,6 +531,23 @@ def _display_object_info(obj):
                 click.echo("Size: Point source")
             else:
                 click.echo("Size: No size information available")
+    
+    # Catalog information
+    if "catalogs" in obj and obj["catalogs"]:
+        click.echo("\nCatalog Designations:")
+        catalogs_by_name = {}
+        
+        # Group by catalog name
+        for cat_entry in obj["catalogs"]:
+            catalog = cat_entry["catalog"]
+            if catalog not in catalogs_by_name:
+                catalogs_by_name[catalog] = []
+            catalogs_by_name[catalog].append(cat_entry["id"])
+        
+        # Display in a nice format
+        for catalog, ids in sorted(catalogs_by_name.items()):
+            id_str = ", ".join(ids)
+            click.echo(f"  • {catalog}: {id_str}")
     
     # Distance
     if "distance" in obj:
