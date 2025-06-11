@@ -1,17 +1,17 @@
 // Database utilities
 
-import {neon} from '@neondatabase/serverless'
+import { sequelize, User, AstronomyTodo, AstroObject, Collection, Image, Op, withTransaction } from '@/lib/database';
 import {
-  AstroObject,
+  AstroObject as AstroObjectType,
   AstroObjectArraySchema,
   AstroObjectSchema,
-  Collection,
+  Collection as CollectionType,
   CollectionArraySchema,
   CollectionSchema,
-  Image,
+  Image as ImageType,
   ImageArraySchema,
   ImageSchema,
-  User,
+  User as UserType,
   UserSchema,
 } from "@/lib/models"
 import {marked} from "marked"
@@ -44,16 +44,11 @@ const AstronomyTodoArraySchema = z.array(AstronomyTodoSchema);
 
 // Fetch all astronomy todo items for a user
 export async function fetchAstronomyTodoItems(userId: string): Promise<AstronomyObject[]> {
-  const sql = neon(`${process.env.DATABASE_URL}`);
+  const todoItems = await AstronomyTodo.findAll({
+    where: { user_id: userId },
+    order: [['addedAt', 'DESC']],
+  });
 
-  const results = await sql`
-    SELECT * FROM astronomy_todo
-    WHERE user_id = ${userId}
-    ORDER BY "addedAt" DESC
-  `;
-
-  // Parse and convert to AstronomyObject format
-  const todoItems = AstronomyTodoArraySchema.parse(results);
   return todoItems.map(item => ({
     id: item.id,
     name: item.name,
@@ -76,35 +71,24 @@ export async function createAstronomyTodoItem(
   userId: string,
   todoItem: AstronomyObject
 ): Promise<AstronomyObject> {
-  const sql = neon(`${process.env.DATABASE_URL}`);
+  const createdItem = await AstronomyTodo.create({
+    id: todoItem.id,
+    user_id: userId,
+    name: todoItem.name,
+    ra: todoItem.ra,
+    dec: todoItem.dec,
+    magnitude: todoItem.magnitude,
+    size: todoItem.size,
+    objectType: todoItem.objectType || null,
+    addedAt: todoItem.addedAt,
+    completed: todoItem.completed,
+    completedAt: todoItem.completedAt || null,
+    goalTime: todoItem.goalTime || null,
+    notes: todoItem.notes || null,
+    flagged: todoItem.flagged || false,
+    last_updated: new Date().toISOString(),
+  });
 
-  const result = await sql`
-    INSERT INTO astronomy_todo (
-      id, user_id, name, ra, dec, magnitude, size, 
-      "objectType", "addedAt", completed, "completedAt", 
-      "goalTime", notes, flagged, last_updated
-    )
-    VALUES (
-      ${todoItem.id},
-      ${userId},
-      ${todoItem.name},
-      ${todoItem.ra},
-      ${todoItem.dec},
-      ${todoItem.magnitude},
-      ${todoItem.size},
-      ${todoItem.objectType || null},
-      ${todoItem.addedAt},
-      ${todoItem.completed},
-      ${todoItem.completedAt || null},
-      ${todoItem.goalTime || null},
-      ${todoItem.notes || null},
-      ${todoItem.flagged || false},
-      ${new Date().toISOString()}
-    )
-    RETURNING *
-  `;
-
-  const createdItem = AstronomyTodoSchema.parse(result[0]);
   return {
     id: createdItem.id,
     name: createdItem.name,
@@ -126,28 +110,32 @@ export async function updateAstronomyTodoItem(
   userId: string,
   todoItem: AstronomyObject
 ): Promise<AstronomyObject> {
-  const sql = neon(`${process.env.DATABASE_URL}`);
+  const [affectedCount, updatedRows] = await AstronomyTodo.update(
+    {
+      name: todoItem.name,
+      ra: todoItem.ra,
+      dec: todoItem.dec,
+      magnitude: todoItem.magnitude,
+      size: todoItem.size,
+      objectType: todoItem.objectType || null,
+      completed: todoItem.completed,
+      completedAt: todoItem.completedAt || null,
+      goalTime: todoItem.goalTime || null,
+      notes: todoItem.notes || null,
+      flagged: todoItem.flagged || false,
+      last_updated: new Date().toISOString(),
+    },
+    {
+      where: { id: todoItem.id, user_id: userId },
+      returning: true,
+    }
+  );
 
-  const result = await sql`
-    UPDATE astronomy_todo
-    SET 
-      name = ${todoItem.name},
-      ra = ${todoItem.ra},
-      dec = ${todoItem.dec},
-      magnitude = ${todoItem.magnitude},
-      size = ${todoItem.size},
-      "objectType" = ${todoItem.objectType || null},
-      completed = ${todoItem.completed},
-      "completedAt" = ${todoItem.completedAt || null},
-      "goalTime" = ${todoItem.goalTime || null},
-      notes = ${todoItem.notes || null},
-      flagged = ${todoItem.flagged || false},
-      last_updated = ${new Date().toISOString()}
-    WHERE id = ${todoItem.id} AND user_id = ${userId}
-    RETURNING *
-  `;
+  if (affectedCount === 0) {
+    throw new Error('Todo item not found or not authorized to update');
+  }
 
-  const updatedItem = AstronomyTodoSchema.parse(result[0]);
+  const updatedItem = updatedRows[0];
   return {
     id: updatedItem.id,
     name: updatedItem.name,
@@ -170,15 +158,11 @@ export async function deleteAstronomyTodoItem(
   userId: string,
   itemId: string
 ): Promise<boolean> {
-  const sql = neon(`${process.env.DATABASE_URL}`);
+  const deletedCount = await AstronomyTodo.destroy({
+    where: { id: itemId, user_id: userId },
+  });
 
-  const result = await sql`
-    DELETE FROM astronomy_todo
-    WHERE id = ${itemId} AND user_id = ${userId}
-    RETURNING id
-  `;
-
-  return result.length > 0;
+  return deletedCount > 0;
 }
 
 // Batch update or create multiple astronomy todo items
@@ -186,174 +170,160 @@ export async function syncAstronomyTodoItems(
   userId: string,
   todoItems: AstronomyObject[]
 ): Promise<AstronomyObject[]> {
-  const sql = neon(`${process.env.DATABASE_URL}`);
+  return await withTransaction(async (transaction) => {
+    // First, get all existing items for this user
+    const existingItems = await AstronomyTodo.findAll({
+      where: { user_id: userId },
+      attributes: ['id'],
+      transaction,
+    });
 
-  // First, get all existing items for this user
-  const existingItems = await sql`
-    SELECT id FROM astronomy_todo
-    WHERE user_id = ${userId}
-  `;
+    const existingIds = new Set(existingItems.map(item => item.id));
+    const results: AstronomyObject[] = [];
 
-  const existingIds = new Set(existingItems.map(item => item.id));
-  const results: AstronomyObject[] = [];
-
-  // Process each item - update existing or create new
-  for (const item of todoItems) {
-    if (existingIds.has(item.id)) {
-      // Item exists, update it
-      const updatedItem = await updateAstronomyTodoItem(userId, item);
-      results.push(updatedItem);
-    } else {
-      // Item is new, create it
-      const newItem = await createAstronomyTodoItem(userId, item);
-      results.push(newItem);
+    // Process each item - update existing or create new
+    for (const item of todoItems) {
+      if (existingIds.has(item.id)) {
+        // Item exists, update it
+        const updatedItem = await updateAstronomyTodoItem(userId, item);
+        results.push(updatedItem);
+      } else {
+        // Item is new, create it
+        const newItem = await createAstronomyTodoItem(userId, item);
+        results.push(newItem);
+      }
     }
-  }
 
-  // Delete items that are in the database but not in the provided list
-  const currentIds = new Set(todoItems.map(item => item.id));
-  for (const existingId of existingIds) {
-    if (!currentIds.has(existingId)) {
-      await deleteAstronomyTodoItem(userId, existingId);
+    // Delete items that are in the database but not in the provided list
+    const currentIds = new Set(todoItems.map(item => item.id));
+    const idsToDelete = Array.from(existingIds).filter(id => !currentIds.has(id));
+
+    if (idsToDelete.length > 0) {
+      await AstronomyTodo.destroy({
+        where: {
+          id: { [Op.in]: idsToDelete },
+          user_id: userId,
+        },
+        transaction,
+      });
     }
-  }
 
-  return results;
+    return results;
+  });
 }
 
 
-export async function fetchUser(id: string): Promise<User | null> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM "user"
-                            WHERE id = ${id}
-                            LIMIT 1`
-  return results.length > 0 ? UserSchema.parse(results[0]) : null
+export async function fetchUser(id: string): Promise<UserType | null> {
+  const user = await User.findByPk(id);
+  return user ? user.toJSON() as UserType : null;
 }
 
-export async function fetchUserFromClerkUser(userId: string): Promise<User | null> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM "user"
-                            WHERE metadata_ ->> 'clerk:user_id' = ${userId}
-                            LIMIT 1`
-  return results.length > 0 ? UserSchema.parse(results[0]) : null
+export async function fetchUserFromClerkUser(userId: string): Promise<UserType | null> {
+  const user = await User.findOne({
+    where: sequelize.literal(`metadata_ ->> 'clerk:user_id' = '${userId}'`),
+  });
+  return user ? user.toJSON() as UserType : null;
 }
 
 
-export async function fetchCollections(user_id: string, visibility: string = 'public'): Promise<Array<Collection>> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-  const results = await sql`SELECT *
-                            FROM collection
-                            WHERE user_id = ${user_id}
-                              AND visibility = ${visibility}
-                              AND (template != 'astrolog' or template is null)
-                            ORDER BY created_at DESC `
+export async function fetchCollections(user_id: string, visibility: string = 'public'): Promise<Array<CollectionType>> {
+  const collections = await Collection.findAll({
+    where: {
+      user_id,
+      visibility,
+      [Op.or]: [
+        { template: { [Op.ne]: 'astrolog' } },
+        { template: { [Op.is]: null } },
+      ],
+    },
+    order: [['created_at', 'DESC']],
+  });
 
-  return CollectionArraySchema.parse(results)
+  return collections.map(c => c.toJSON()) as CollectionType[];
 }
 
-export async function fetchAstroObservations(user_id: string, visibility: string = 'public'): Promise<Array<Collection>> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-  const results = await sql`SELECT *
-                            FROM collection
-                            WHERE user_id = ${user_id}
-                              AND visibility = ${visibility}
-                              AND template = 'astrolog'
-                            ORDER BY metadata_ ->> 'session_date' DESC`
+export async function fetchAstroObservations(user_id: string, visibility: string = 'public'): Promise<Array<CollectionType>> {
+  const observations = await Collection.findAll({
+    where: {
+      user_id,
+      visibility,
+      template: 'astrolog',
+    },
+    order: [sequelize.literal(`metadata_ ->> 'session_date' DESC`)],
+  });
 
-  return CollectionArraySchema.parse(results)
+  return observations.map(o => o.toJSON()) as CollectionType[];
 }
 
-export async function fetchCatalogObjects(catalog: string): Promise<Array<AstroObject>> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-  const results = await sql`SELECT o.*
-                            FROM catalogobject ci 
-                            JOIN "object" o ON ci.object_id = o.id
-                           WHERE ci.catalog_id = ${catalog}
-                           ORDER BY o.seq`
+export async function fetchCatalogObjects(catalog: string): Promise<Array<AstroObjectType>> {
+  const objects = await sequelize.query(
+    `SELECT o.*
+     FROM catalogobject ci 
+     JOIN "object" o ON ci.object_id = o.id
+     WHERE ci.catalog_id = :catalog
+     ORDER BY o.seq`,
+    {
+      replacements: { catalog },
+      type: sequelize.QueryTypes.SELECT,
+    }
+  );
 
-  return AstroObjectArraySchema.parse(results)
+  return objects as AstroObjectType[];
 }
 
-
-export async function fetchCollection(collection_id: string): Promise<Collection | null> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM collection
-                            WHERE id = ${collection_id}
-                            LIMIT 1`
-  return results.length > 0 ? CollectionSchema.parse(results[0]) : null
+export async function fetchCollection(collection_id: string): Promise<CollectionType | null> {
+  const collection = await Collection.findByPk(collection_id);
+  return collection ? collection.toJSON() as CollectionType : null;
 }
 
-export async function fetchCollectionImages(collection_id: string): Promise<Array<Image>> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
+export async function fetchCollectionImages(collection_id: string): Promise<Array<ImageType>> {
+  const collection = await Collection.findByPk(collection_id, {
+    include: [{
+      model: Image,
+      as: 'images',
+    }],
+  });
 
-  const results = await sql`SELECT image.*
-                            FROM image
-                            JOIN collectionimage ON collectionimage.image_id = image.id
-                            WHERE collectionimage.collection_id = ${collection_id}
-  `
-
-  return ImageArraySchema.parse(results);
+  return collection?.images?.map(img => img.toJSON()) as ImageType[] || [];
 }
 
 export async function fetchCollectionImageCount(collection_id: string): Promise<number> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
+  const result = await sequelize.query(
+    `SELECT count(*) AS cnt
+     FROM collectionimage 
+     WHERE collection_id = :collection_id`,
+    {
+      replacements: { collection_id },
+      type: sequelize.QueryTypes.SELECT,
+    }
+  );
 
-  const results = await sql`SELECT count(*) AS cnt
-                            FROM collectionimage 
-                            WHERE collectionimage.collection_id = ${collection_id}
-  `
-
-  return results[0]['cnt']
+  return (result[0] as any).cnt;
 }
-
 
 export async function fetchCollectionStats(collection_id: string) {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  // const results = await sql`SELECT *
-  //                           FROM collection
-  //                           WHERE id = ${collection_id}
-  //                           LIMIT 1`
-
+  // Placeholder for collection stats implementation
   return null;
-
 }
 
-export async function fetchImage(image_id: string): Promise<Image | null> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM image
-                            WHERE id = ${image_id}
-                            LIMIT 1`
-  return results.length > 0 ? ImageSchema.parse(results[0]) : null
+export async function fetchImage(image_id: string): Promise<ImageType | null> {
+  const image = await Image.findByPk(image_id);
+  return image ? image.toJSON() as ImageType : null;
 }
 
-export async function fetchAstroObjectByName(name: string): Promise<AstroObject | null> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM "object"
-                            WHERE name = ${name}
-                            LIMIT 1`
-  console.log('Astro object:', results, { name })
-  return results.length > 0 ? AstroObjectSchema.parse(results[0]) : null
+export async function fetchAstroObjectByName(name: string): Promise<AstroObjectType | null> {
+  const astroObject = await AstroObject.findOne({
+    where: { name },
+  });
+  console.log('Astro object:', astroObject?.toJSON(), { name });
+  return astroObject ? astroObject.toJSON() as AstroObjectType : null;
 }
 
-export async function fetchAstroObjects(): Promise<Array<AstroObject>> {
-  const sql = neon(`${process.env.DATABASE_URL}`)
-
-  const results = await sql`SELECT *
-                            FROM "object"
-                            ORDER BY name
-                           `
-  return AstroObjectArraySchema.parse(results);
+export async function fetchAstroObjects(): Promise<Array<AstroObjectType>> {
+  const objects = await AstroObject.findAll({
+    order: [['name', 'ASC']],
+  });
+  return objects.map(obj => obj.toJSON()) as AstroObjectType[];
 }
 //
 // export async function fetchAstroObjectById(name: string): Promise<AstroObject | null> {
@@ -375,7 +345,7 @@ function formatLightYears(distance:number, multipler: number, prefix: string){
   return `${v} ${prefix}light years`
 }
 
-export function transformAstroObject(object: AstroObject){
+export function transformAstroObject(object: AstroObjectType){
   let title = `${object.display_name}`
   // @ts-ignore
   if (object.metadata_?.common_name) {

@@ -1,65 +1,55 @@
-import { DatabaseFactory } from './factory';
-import { DatabaseConfig, DatabaseConnection } from './types';
+import { Sequelize } from 'sequelize';
+import { getDatabaseConfig, createSequelizeOptions } from './config';
 
-// Environment-based configuration
-const getDatabaseConfig = (): DatabaseConfig => {
-  const dbType = process.env.DATABASE_TYPE as 'neon' | 'sqlite' || 'sqlite';
+// Initialize Sequelize
+const config = getDatabaseConfig();
+const options = createSequelizeOptions(config);
 
-  if (dbType === 'neon') {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is required for Neon database');
+export const sequelize = new Sequelize(options);
+
+// Import all models to register them
+import './models/User';
+import './models/AstronomyTodo';
+import './models/AstroObject';
+import './models/Collection';
+import './models/Image';
+
+// Test connection and sync models
+export const initializeDatabase = async (): Promise<void> => {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+
+    // Sync models in development
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: true });
+      console.log('Database models synchronized.');
     }
-    return {
-      type: 'neon',
-      connectionString
-    };
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    throw error;
   }
-
-  // Default to SQLite
-  const filePath = process.env.DATABASE_PATH || './database.db';
-  return {
-    type: 'sqlite',
-    filePath
-  };
 };
 
-// Singleton connection
-let dbInstance: DatabaseConnection | null = null;
-
-export const getDatabase = async (): Promise<DatabaseConnection> => {
-  if (!dbInstance) {
-    const config = getDatabaseConfig();
-    dbInstance = await DatabaseFactory.createConnection(config);
-  }
-  return dbInstance;
-};
-
+// Close database connection
 export const closeDatabase = async (): Promise<void> => {
-  if (dbInstance) {
-    await dbInstance.close();
-    dbInstance = null;
-  }
+  await sequelize.close();
 };
 
-// Create a custom connection with specific config
-export const createCustomConnection = async (config: DatabaseConfig): Promise<DatabaseConnection> => {
-  return await DatabaseFactory.createConnection(config);
+// Re-export models for easy import
+export { User } from './models/User';
+export { AstronomyTodo } from './models/AstronomyTodo';
+export { AstroObject } from './models/AstroObject';
+export { Collection } from './models/Collection';
+export { Image } from './models/Image';
+
+// Helper for transactions
+export const withTransaction = async <T>(callback: (transaction: any) => Promise<T>): Promise<T> => {
+  return await sequelize.transaction(callback);
 };
 
-// Re-export types and classes
-export * from './types';
-export { DatabaseFactory } from './factory';
-export { NeonAdapter } from './neon-adapter';
-export { SQLiteAdapter } from './sqlite-adapter';
+// Helper to get sequelize instance
+export const getSequelize = (): Sequelize => sequelize;
 
-// Helper functions for common operations
-export const withDatabase = async <T>(callback: (db: DatabaseConnection) => Promise<T>): Promise<T> => {
-  const db = await getDatabase();
-  return await callback(db);
-};
-
-export const withTransaction = async <T>(callback: (db: DatabaseConnection) => Promise<T>): Promise<T> => {
-  const db = await getDatabase();
-  return await db.transaction(callback);
-};
+// Re-export Sequelize types for convenience
+export { Op, Transaction, QueryTypes } from 'sequelize';
