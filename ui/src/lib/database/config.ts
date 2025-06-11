@@ -53,6 +53,12 @@ export const getDatabaseConfig = (): DatabaseConfig => {
     dialect: 'sqlite',
     storage: process.env.DATABASE_PATH || './database.sqlite',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    pool: {
+      max: 1,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
   };
 };
 
@@ -81,5 +87,15 @@ export const createSequelizeOptions = (config: DatabaseConfig): Options => {
     dialect: 'sqlite',
     storage: config.storage!,
     logging: config.logging,
+    pool: config.pool,
+    dialectOptions: {
+      // Enable foreign keys for SQLite
+      // Note: This is handled differently in sqlite3
+    },
+    define: {
+      // Global model options for SQLite
+      underscored: true,
+      freezeTableName: true,
+    },
   };
 };

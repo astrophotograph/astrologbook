@@ -219,8 +219,11 @@ export async function fetchUser(id: string): Promise<UserType | null> {
 }
 
 export async function fetchUserFromClerkUser(userId: string): Promise<UserType | null> {
-  const user = await User.findOne({
-    where: sequelize.literal(`metadata_ ->> 'clerk:user_id' = '${userId}'`),
+  // For SQLite, we need to handle JSON differently
+  const users = await User.findAll();
+  const user = users.find(u => {
+    const metadata = u.metadata_;
+    return metadata && metadata['clerk:user_id'] === userId;
   });
   return user ? user.toJSON() as UserType : null;
 }
@@ -249,10 +252,16 @@ export async function fetchAstroObservations(user_id: string, visibility: string
       visibility,
       template: 'astrolog',
     },
-    order: [sequelize.literal(`metadata_ ->> 'session_date' DESC`)],
   });
 
-  return observations.map(o => o.toJSON()) as CollectionType[];
+  // Sort by session_date in JavaScript since SQLite JSON handling is different
+  const sorted = observations.sort((a, b) => {
+    const aDate = a.metadata_?.session_date || '';
+    const bDate = b.metadata_?.session_date || '';
+    return bDate.localeCompare(aDate);
+  });
+
+  return sorted.map(o => o.toJSON()) as CollectionType[];
 }
 
 export async function fetchCatalogObjects(catalog: string): Promise<Array<AstroObjectType>> {

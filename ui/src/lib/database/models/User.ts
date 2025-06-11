@@ -44,8 +44,15 @@ User.init(
       allowNull: true,
     },
     metadata_: {
-      type: DataTypes.JSONB,
+      type: DataTypes.TEXT,
       allowNull: true,
+      get() {
+        const value = this.getDataValue('metadata_');
+        return value ? JSON.parse(value) : null;
+      },
+      set(value: any) {
+        this.setDataValue('metadata_', value ? JSON.stringify(value) : null);
+      },
     },
     created_at: {
       type: DataTypes.DATE,

@@ -7,7 +7,7 @@ export interface CollectionAttributes {
   user_id: string;
   name: string;
   description?: string;
-  visibility: 'public' | 'private';
+  visibility: string;
   template?: string;
   metadata_?: Record<string, any>;
   created_at: Date;
@@ -23,7 +23,7 @@ export class Collection extends Model<CollectionAttributes, CollectionCreationAt
   public user_id!: string;
   public name!: string;
   public description?: string;
-  public visibility!: 'public' | 'private';
+  public visibility!: string;
   public template?: string;
   public metadata_?: Record<string, any>;
   public created_at!: Date;
@@ -54,17 +54,27 @@ Collection.init(
       allowNull: true,
     },
     visibility: {
-      type: DataTypes.ENUM('public', 'private'),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'public',
+      validate: {
+        isIn: [['public', 'private']],
+      },
     },
     template: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     metadata_: {
-      type: DataTypes.JSONB,
+      type: DataTypes.TEXT,
       allowNull: true,
+      get() {
+        const value = this.getDataValue('metadata_');
+        return value ? JSON.parse(value) : null;
+      },
+      set(value: any) {
+        this.setDataValue('metadata_', value ? JSON.stringify(value) : null);
+      },
     },
     created_at: {
       type: DataTypes.DATE,

@@ -13,12 +13,16 @@ import './models/AstronomyTodo';
 import './models/AstroObject';
 import './models/Collection';
 import './models/Image';
+import { initializeSQLite } from './hooks';
 
 // Test connection and sync models
 export const initializeDatabase = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
+
+    // Initialize SQLite-specific settings
+    await initializeSQLite();
 
     // Sync models in development
     if (process.env.NODE_ENV === 'development') {

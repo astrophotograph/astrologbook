@@ -13,10 +13,10 @@ export interface ImageAttributes {
   updated_at: Date;
 }
 
-export interface ImageCreationAttributes 
+export interface ImageCreationAttributes
   extends Optional<ImageAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
-export class Image extends Model<ImageAttributes, ImageCreationAttributes> 
+export class Image extends Model<ImageAttributes, ImageCreationAttributes>
   implements ImageAttributes {
   public id!: string;
   public user_id!: string;
@@ -51,8 +51,15 @@ Image.init(
       allowNull: true,
     },
     metadata_: {
-      type: DataTypes.JSONB,
+      type: DataTypes.TEXT,
       allowNull: true,
+      get() {
+        const value = this.getDataValue('metadata_');
+        return value ? JSON.parse(value) : null;
+      },
+      set(value: any) {
+        this.setDataValue('metadata_', value ? JSON.stringify(value) : null);
+      },
     },
     created_at: {
       type: DataTypes.DATE,
