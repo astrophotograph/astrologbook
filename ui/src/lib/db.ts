@@ -3,16 +3,9 @@
 import { sequelize, User, AstronomyTodo, AstroObject, Collection, Image, Op, withTransaction } from '@/lib/database';
 import {
   AstroObject as AstroObjectType,
-  AstroObjectArraySchema,
-  AstroObjectSchema,
   Collection as CollectionType,
-  CollectionArraySchema,
-  CollectionSchema,
   Image as ImageType,
-  ImageArraySchema,
-  ImageSchema,
   User as UserType,
-  UserSchema,
 } from "@/lib/models"
 import {marked} from "marked"
 import ObjectTypeMap from "@/lib/objectTypeMap"

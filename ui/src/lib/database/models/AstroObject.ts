@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../index';
+import { sequelize } from '../connection';
 
 export interface AstroObjectAttributes {
   id: string;
@@ -12,10 +12,10 @@ export interface AstroObjectAttributes {
   updated_at: Date;
 }
 
-export interface AstroObjectCreationAttributes 
+export interface AstroObjectCreationAttributes
   extends Optional<AstroObjectAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
-export class AstroObject extends Model<AstroObjectAttributes, AstroObjectCreationAttributes> 
+export class AstroObject extends Model<AstroObjectAttributes, AstroObjectCreationAttributes>
   implements AstroObjectAttributes {
   public id!: string;
   public name!: string;

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [new URL('https://m.astrophotography.tv/i/**')],
   },
   assetPrefix: '/ph',
+  serverExternalPackages: ['sequelize'],
   experimental: {
     serverActions: {
       allowedOrigins: ['astroroot.vercel.app', 'photohosting.vercel.app', 'astrophotography.tv', 'www.astrophotography.tv'],

@@ -19,7 +19,7 @@ export function DefaultBreadcrumb({user, pageName}: { user: User, pageName: stri
           <>
             <BreadcrumbSeparator/>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/u/${user.id}`}>{user.name}</BreadcrumbLink>
+              <BreadcrumbLink href={`/u/${user?.id}`}>{user?.name}</BreadcrumbLink>
             </BreadcrumbItem>
           </>
         )}

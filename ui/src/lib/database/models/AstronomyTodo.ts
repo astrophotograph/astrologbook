@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../index';
-import { User } from './User';
+import { sequelize } from '../connection';
 
 export interface AstronomyTodoAttributes {
   id: string;
@@ -22,10 +21,10 @@ export interface AstronomyTodoAttributes {
   updated_at: Date;
 }
 
-export interface AstronomyTodoCreationAttributes 
+export interface AstronomyTodoCreationAttributes
   extends Optional<AstronomyTodoAttributes, 'id' | 'created_at' | 'updated_at' | 'last_updated' | 'flagged'> {}
 
-export class AstronomyTodo extends Model<AstronomyTodoAttributes, AstronomyTodoCreationAttributes> 
+export class AstronomyTodo extends Model<AstronomyTodoAttributes, AstronomyTodoCreationAttributes>
   implements AstronomyTodoAttributes {
   public id!: string;
   public user_id!: string;
@@ -57,7 +56,7 @@ AstronomyTodo.init(
       type: DataTypes.STRING,
       allowNull: false,
       references: {
-        model: User,
+        model: 'users',
         key: 'id',
       },
     },
@@ -148,6 +147,3 @@ AstronomyTodo.init(
   }
 );
 
-// Define associations
-User.hasMany(AstronomyTodo, { foreignKey: 'user_id', as: 'astronomyTodos' });
-AstronomyTodo.belongsTo(User, { foreignKey: 'user_id', as: 'user' });

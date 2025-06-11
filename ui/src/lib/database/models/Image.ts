@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../index';
+import { sequelize } from '../connection';
 import { User } from './User';
-import { Collection } from './Collection';
+import { Collection } from "./Collection";
 
 export interface ImageAttributes {
   id: string;
@@ -91,21 +91,3 @@ Image.init(
   }
 );
 
-// Define associations
-User.hasMany(Image, { foreignKey: 'user_id', as: 'images' });
-Image.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-
-// Many-to-many relationship with Collections
-Image.belongsToMany(Collection, {
-  through: 'collectionimage',
-  foreignKey: 'image_id',
-  otherKey: 'collection_id',
-  as: 'collections',
-});
-
-Collection.belongsToMany(Image, {
-  through: 'collectionimage',
-  foreignKey: 'collection_id',
-  otherKey: 'image_id',
-  as: 'images',
-});

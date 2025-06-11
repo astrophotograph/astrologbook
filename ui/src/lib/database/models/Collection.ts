@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../index';
-import { User } from './User';
+import { sequelize } from '../connection';
+import { User } from "./User";
 
 export interface CollectionAttributes {
   id: string;
@@ -14,10 +14,10 @@ export interface CollectionAttributes {
   updated_at: Date;
 }
 
-export interface CollectionCreationAttributes 
+export interface CollectionCreationAttributes
   extends Optional<CollectionAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
-export class Collection extends Model<CollectionAttributes, CollectionCreationAttributes> 
+export class Collection extends Model<CollectionAttributes, CollectionCreationAttributes>
   implements CollectionAttributes {
   public id!: string;
   public user_id!: string;
@@ -41,7 +41,7 @@ Collection.init(
       type: DataTypes.STRING,
       allowNull: false,
       references: {
-        model: User,
+        model: 'users',
         key: 'id',
       },
     },
@@ -108,7 +108,3 @@ Collection.init(
     ],
   }
 );
-
-// Define associations
-User.hasMany(Collection, { foreignKey: 'user_id', as: 'collections' });
-Collection.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
