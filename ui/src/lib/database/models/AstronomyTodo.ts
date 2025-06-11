@@ -26,23 +26,23 @@ export interface AstronomyTodoCreationAttributes
 
 export class AstronomyTodo extends Model<AstronomyTodoAttributes, AstronomyTodoCreationAttributes>
   implements AstronomyTodoAttributes {
-  public id!: string;
-  public user_id!: string;
-  public name!: string;
-  public ra!: string;
-  public dec!: string;
-  public magnitude!: string;
-  public size!: string;
-  public objectType?: string;
-  public addedAt!: string;
-  public completed!: boolean;
-  public completedAt?: string;
-  public goalTime?: string;
-  public notes?: string;
-  public flagged!: boolean;
-  public last_updated?: string;
-  public created_at!: Date;
-  public updated_at!: Date;
+  declare id: string;
+  declare user_id: string;
+  declare name: string;
+  declare ra: string;
+  declare dec: string;
+  declare magnitude: string;
+  declare size: string;
+  declare objectType?: string;
+  declare addedAt: string;
+  declare completed: boolean;
+  declare completedAt?: string;
+  declare goalTime?: string;
+  declare notes?: string;
+  declare flagged: boolean;
+  declare last_updated?: string;
+  declare created_at: Date;
+  declare updated_at: Date;
 }
 
 AstronomyTodo.init(
@@ -128,7 +128,7 @@ AstronomyTodo.init(
   {
     sequelize,
     modelName: 'AstronomyTodo',
-    tableName: 'astronomy_todo',
+    tableName: 'astronomy_todos',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',

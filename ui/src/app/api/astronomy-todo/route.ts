@@ -3,23 +3,21 @@ import {
   createAstronomyTodoItem,
   deleteAstronomyTodoItem,
   fetchAstronomyTodoItems,
-  fetchUserFromClerkUser,
   syncAstronomyTodoItems,
   updateAstronomyTodoItem,
 } from '@/lib/db'
-import {auth} from '@clerk/nextjs/server'
+import { getAuthenticatedUser } from '@/lib/auth'
 
 // GET - Fetch all astronomy todo items for the current user
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { user, isAuthenticated } = await getAuthenticatedUser();
 
-    if (!userId) {
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await fetchUserFromClerkUser(userId);
-    const todoItems = await fetchAstronomyTodoItems(user!.id);
+    const todoItems = await fetchAstronomyTodoItems(user.id);
     return NextResponse.json(todoItems);
   } catch (error) {
     console.error('Error fetching astronomy todo items:', error);
@@ -30,15 +28,14 @@ export async function GET() {
 // POST - Create a new astronomy todo item
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { user, isAuthenticated } = await getAuthenticatedUser();
 
-    if (!userId) {
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const todoItem = await req.json();
-    const user = await fetchUserFromClerkUser(userId);
-    const createdItem = await createAstronomyTodoItem(user!.id, todoItem);
+    const createdItem = await createAstronomyTodoItem(user.id, todoItem);
     return NextResponse.json(createdItem, { status: 201 });
   } catch (error) {
     console.error('Error creating astronomy todo item:', error);
@@ -49,15 +46,14 @@ export async function POST(req: NextRequest) {
 // PUT - Update an existing astronomy todo item
 export async function PUT(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { user, isAuthenticated } = await getAuthenticatedUser();
 
-    if (!userId) {
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const todoItem = await req.json();
-    const user = await fetchUserFromClerkUser(userId);
-    const updatedItem = await updateAstronomyTodoItem(user!.id, todoItem);
+    const updatedItem = await updateAstronomyTodoItem(user.id, todoItem);
     return NextResponse.json(updatedItem);
   } catch (error) {
     console.error('Error updating astronomy todo item:', error);
@@ -68,20 +64,20 @@ export async function PUT(req: NextRequest) {
 // DELETE - Delete an astronomy todo item
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth();
     const { searchParams } = new URL(req.url);
     const itemId = searchParams.get('id');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     if (!itemId) {
       return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
     }
 
-    const user = await fetchUserFromClerkUser(userId);
-    const success = await deleteAstronomyTodoItem(user!.id, itemId);
+    const { user, isAuthenticated } = await getAuthenticatedUser();
+
+    if (!isAuthenticated || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const success = await deleteAstronomyTodoItem(user.id, itemId);
 
     if (success) {
       return NextResponse.json({ success: true });
@@ -97,15 +93,15 @@ export async function DELETE(req: NextRequest) {
 // PATCH - Sync multiple astronomy todo items
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { user, isAuthenticated } = await getAuthenticatedUser();
+    console.log('user:', user, isAuthenticated)
 
-    if (!userId) {
+    if (!isAuthenticated || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { items } = await req.json();
-    const user = await fetchUserFromClerkUser(userId);
-    const syncedItems = await syncAstronomyTodoItems(user!.id, items);
+    const syncedItems = await syncAstronomyTodoItems(user.id, items);
     return NextResponse.json(syncedItems);
   } catch (error) {
     console.error('Error syncing astronomy todo items:', error);

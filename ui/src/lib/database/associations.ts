@@ -10,20 +10,20 @@ console.log('Loading models:', { User, AstronomyTodo, AstroObject, Collection, I
 
 
 // User associations
-User.hasMany(AstronomyTodo, { foreignKey: 'user_id', as: 'astronomyTodos' });
+User.hasMany(AstronomyTodo, { foreignKey: 'user_id', as: 'astronomy_todos' });
 User.hasMany(Collection, { foreignKey: 'user_id', as: 'collections' });
 User.hasMany(Image, { foreignKey: 'user_id', as: 'images' });
 
 // AstronomyTodo associations
-AstronomyTodo.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+AstronomyTodo.belongsTo(User, { foreignKey: 'user_id', as: 'users' });
 
 // Collection associations
-Collection.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Collection.belongsTo(User, { foreignKey: 'user_id', as: 'users' });
 // Collection.hasMany(Image, { foreignKey: 'collection_id', as: 'images' });
 
 // Image associations
 // Image.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });
-Image.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Image.belongsTo(User, { foreignKey: 'user_id', as: 'users' });
 
 // Many-to-many relationship with Collections
 Image.belongsToMany(Collection, {

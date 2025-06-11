@@ -76,7 +76,7 @@ AstroObject.init(
   {
     sequelize,
     modelName: 'AstroObject',
-    tableName: 'object',
+    tableName: 'astro_objects',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',

@@ -28,10 +28,17 @@ import {SyncStatus} from "@/components/sync-status"
 import {DataManagementDropdown} from "@/components/data-management-dropdown"
 import {ImportDialog} from "@/components/import-dialog"
 import {useDataSync} from "@/components/use-data-sync"
+import { useAuthMode } from "@/hooks/useAuthMode"
 
 // Main Component
 export function AstronomyTodoList() {
   const { userId, isLoaded, isSignedIn } = useAuth();
+  const { isSQLite, isLoading: authModeLoading } = useAuthMode();
+
+  // For SQLite, we simulate being signed in with a default user
+  const effectiveUserId = isSQLite ? 'sqlite-default-user' : userId;
+  const effectiveIsSignedIn = isSQLite ? true : isSignedIn;
+  const effectiveIsLoaded = isSQLite ? !authModeLoading : isLoaded;
   const [objectName, setObjectName] = useState("");
   const [notes, setNotes] = useState("");
   const [isLookupLoading, setIsLookupLoading] = useState(false);
@@ -67,7 +74,7 @@ export function AstronomyTodoList() {
     updateObject,
     deleteObject,
     importObjects
-  } = useDataSync(userId!, []);
+  } = useDataSync(effectiveUserId!, []);
 
   // Load data from localStorage and then from API when component mounts
   useEffect(() => {
@@ -83,13 +90,13 @@ export function AstronomyTodoList() {
       setCoordinates(JSON.parse(savedCoordinates));
     }
 
-    // Only fetch from API if user is authenticated
-    if (isLoaded && isSignedIn && userId) {
+    // Fetch from API if user is authenticated (including SQLite mode)
+    if (effectiveIsLoaded && effectiveIsSignedIn && effectiveUserId) {
       fetchData();
     }
 
     setInitialLoadComplete(true);
-  }, [isLoaded, isSignedIn, userId, fetchData, setObjects]);
+  }, [effectiveIsLoaded, effectiveIsSignedIn, effectiveUserId, fetchData, setObjects]);
 
   // Extract available object types for filtering
   useEffect(() => {
@@ -569,7 +576,7 @@ export function AstronomyTodoList() {
             lastSyncTime={lastSyncTime}
             isSyncing={isSyncing}
             onSync={handleManualSync}
-            isAuthenticated={!!userId}
+            isAuthenticated={!!effectiveUserId}
           />
           <DataManagementDropdown
             objects={objects}

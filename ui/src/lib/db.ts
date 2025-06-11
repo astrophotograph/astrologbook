@@ -130,19 +130,19 @@ export async function updateAstronomyTodoItem(
 
   const updatedItem = updatedRows[0];
   return {
-    id: updatedItem.id,
-    name: updatedItem.name,
-    ra: updatedItem.ra,
-    dec: updatedItem.dec,
-    magnitude: updatedItem.magnitude,
-    size: updatedItem.size,
-    objectType: updatedItem.objectType,
-    addedAt: updatedItem.addedAt,
-    completed: updatedItem.completed,
-    completedAt: updatedItem.completedAt,
-    goalTime: updatedItem.goalTime,
-    notes: updatedItem.notes,
-    flagged: updatedItem.flagged
+    id: updatedItem?.id ?? todoItem.id,
+    name: todoItem.name,
+    ra: todoItem.ra,
+    dec: todoItem.dec,
+    magnitude: todoItem.magnitude,
+    size: todoItem.size,
+    objectType: todoItem.objectType,
+    addedAt: todoItem.addedAt,
+    completed: todoItem.completed,
+    completedAt: todoItem.completedAt,
+    goalTime: todoItem.goalTime,
+    notes: todoItem.notes,
+    flagged: todoItem.flagged
   };
 }
 

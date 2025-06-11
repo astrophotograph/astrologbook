@@ -90,7 +90,7 @@ Collection.init(
   {
     sequelize,
     modelName: 'Collection',
-    tableName: 'collection',
+    tableName: 'collections',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',

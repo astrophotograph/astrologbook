@@ -1,7 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../connection';
 import { User } from './User';
-import { Collection } from "./Collection";
 
 export interface ImageAttributes {
   id: string;
@@ -75,7 +74,7 @@ Image.init(
   {
     sequelize,
     modelName: 'Image',
-    tableName: 'image',
+    tableName: 'images',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',

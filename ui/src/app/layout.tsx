@@ -5,6 +5,7 @@ import {Header} from "@/components/header"
 import {ThemeProvider} from "@/components/theme-provider"
 import {ClerkProvider} from '@clerk/nextjs'
 import { Toaster } from "@/components/ui/sonner"
+import { ensureDatabaseInitialized } from '@/lib/database/init';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +16,12 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// Initialize database on app startup
+if (typeof window === 'undefined') {
+  // Server-side only
+  ensureDatabaseInitialized().catch(console.error);
+}
 
 const inter = Inter({
   variable: "--font-inter",

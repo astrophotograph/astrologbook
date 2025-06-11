@@ -2,7 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../connection';
 
 export interface UserAttributes {
-  id: string;
+  // id: string;
   email?: string;
   name?: string;
   image?: string;
@@ -14,17 +14,18 @@ export interface UserAttributes {
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: string;
-  public email?: string;
-  public name?: string;
-  public image?: string;
-  public metadata_?: Record<string, any>;
-  public created_at!: Date;
-  public updated_at!: Date;
+  declare id: string;
+  declare email?: string;
+  declare name?: string;
+  declare image?: string;
+  declare metadata_?: Record<string, any>;
+  declare created_at: Date;
+  declare updated_at: Date;
 }
 
 User.init(
   {
+    // @ts-ignore
     id: {
       type: DataTypes.STRING,
       primaryKey: true,
@@ -68,7 +69,7 @@ User.init(
   {
     sequelize,
     modelName: 'User',
-    tableName: 'user',
+    tableName: 'users',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',

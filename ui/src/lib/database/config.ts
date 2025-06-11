@@ -19,6 +19,7 @@ export interface DatabaseConfig {
 
 // Get database configuration based on environment
 export const getDatabaseConfig = (): DatabaseConfig => {
+  console.log('DATABASE_TYPE:', process.env.DATABASE_TYPE)
   const dbType = process.env.DATABASE_TYPE as 'postgres' | 'sqlite' || 'postgres';
 
   if (dbType === 'postgres') {
