@@ -321,14 +321,97 @@ export function WeatherConditions() {
         </div>
 
         <div className="pt-4 border-t border-gray-700">
-          <h4 className="text-sm font-medium mb-2">7-Day Forecast (Sky Transparency & Seeing)</h4>
-          <div className="space-y-2 text-sm">
-            {['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'].map((day, index) => (
-              <div key={index} className="flex justify-between">
-                <span>{day}</span>
-                <span>Transparency: High, Seeing: Good</span>
+          <h4 className="text-sm font-medium mb-3">7-Day Forecast Heatmap</h4>
+          
+          {/* Day labels */}
+          <div className="grid grid-cols-8 gap-1 mb-2 text-xs">
+            <div></div>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+              <div key={index} className="text-center text-gray-400 font-medium">{day}</div>
+            ))}
+          </div>
+
+          {/* Sky Transparency Row */}
+          <div className="grid grid-cols-8 gap-1 mb-2">
+            <div className="text-xs text-gray-300 flex items-center">Transparency</div>
+            {[85, 70, 90, 60, 45, 80, 95].map((transparency, index) => {
+              const getTransparencyColor = (value: number) => {
+                if (value >= 80) return 'bg-green-500'
+                if (value >= 60) return 'bg-yellow-500'
+                if (value >= 40) return 'bg-orange-500'
+                return 'bg-red-500'
+              }
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`h-6 rounded ${getTransparencyColor(transparency)} flex items-center justify-center text-xs font-medium text-white`}
+                  title={`Transparency: ${transparency}%`}
+                >
+                  {transparency}%
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Seeing Row */}
+          <div className="grid grid-cols-8 gap-1 mb-2">
+            <div className="text-xs text-gray-300 flex items-center">Seeing</div>
+            {[1.8, 2.5, 1.5, 3.2, 4.1, 2.0, 1.2].map((seeing, index) => {
+              const getSeeingColor = (value: number) => {
+                if (value <= 1.5) return 'bg-green-500'
+                if (value <= 2.5) return 'bg-yellow-500'
+                if (value <= 3.5) return 'bg-orange-500'
+                return 'bg-red-500'
+              }
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`h-6 rounded ${getSeeingColor(seeing)} flex items-center justify-center text-xs font-medium text-white`}
+                  title={`Seeing: ${seeing}" arcsec`}
+                >
+                  {seeing}"
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Day/Night indicator */}
+          <div className="grid grid-cols-8 gap-1 mb-2">
+            <div className="text-xs text-gray-300 flex items-center">Day/Night</div>
+            {[true, false, true, true, false, true, false].map((isNight, index) => (
+              <div 
+                key={index} 
+                className={`h-4 rounded ${isNight ? 'bg-gray-900 border border-gray-600' : 'bg-yellow-200'} flex items-center justify-center`}
+                title={isNight ? 'Night time' : 'Day time'}
+              >
+                <div className={`w-2 h-2 rounded-full ${isNight ? 'bg-gray-300' : 'bg-yellow-600'}`}></div>
               </div>
             ))}
+          </div>
+
+          {/* Legend */}
+          <div className="mt-3 pt-2 border-t border-gray-600">
+            <div className="text-xs text-gray-400 mb-1">Legend:</div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span className="text-gray-300">Excellent</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                <span className="text-gray-300">Good</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span className="text-gray-300">Fair</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-red-500 rounded"></div>
+                <span className="text-gray-300">Poor</span>
+              </div>
+            </div>
           </div>
         </div>
 
