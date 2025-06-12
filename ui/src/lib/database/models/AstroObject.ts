@@ -17,14 +17,14 @@ export interface AstroObjectCreationAttributes
 
 export class AstroObject extends Model<AstroObjectAttributes, AstroObjectCreationAttributes>
   implements AstroObjectAttributes {
-  public id!: string;
-  public name!: string;
-  public display_name!: string;
-  public otype?: string;
-  public seq?: number;
-  public metadata_?: Record<string, any>;
-  public created_at!: Date;
-  public updated_at!: Date;
+  declare id: string;
+  declare name: string;
+  declare display_name: string;
+  declare otype?: string;
+  declare seq?: number;
+  declare metadata_?: Record<string, any>;
+  declare created_at: Date;
+  declare updated_at: Date;
 }
 
 AstroObject.init(
