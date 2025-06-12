@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeatherConditions } from "@/components/WeatherConditions";
 import { MoonPhase } from "@/components/MoonPhase";
 import { ObjectAltitudeDialog } from "@/components/object-altitude-dialog";
+import { StarMap } from "@/components/StarMap";
 import { Telescope, Search, Calendar, Plus, Clock, Trash2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { AstroObject, User } from "@/lib/models";
@@ -419,6 +420,7 @@ export default function PlanPage() {
         <div className="space-y-6">
           <WeatherConditions />
           <MoonPhase />
+          <StarMap width={350} height={350} />
         </div>
       </div>
 

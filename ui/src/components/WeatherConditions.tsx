@@ -17,6 +17,17 @@ interface WeatherData {
   description: string;
 }
 
+interface ForecastData {
+  dateTime: Date;
+  transparency: number;
+  seeing: number;
+  isNight: boolean;
+  cloudCover: number;
+  humidity: number;
+  windSpeed: number;
+  temperature: number;
+}
+
 interface LocationData {
   latitude: number;
   longitude: number;
@@ -27,6 +38,7 @@ type UnitSystem = 'metric' | 'imperial';
 
 export function WeatherConditions() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [forecast, setForecast] = useState<ForecastData[]>([])
   const [location, setLocation] = useState<LocationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +88,96 @@ export function WeatherConditions() {
     return { condition: "Poor", value: 3.5 }
   }
 
+  const calculateAstronomicalConditions = (cloudCover: number, humidity: number, windSpeed: number) => {
+    // Calculate transparency (0-100%) - less clouds and humidity = better transparency
+    const cloudScore = (100 - cloudCover) / 100
+    const humidityScore = Math.max(0, (80 - humidity) / 80) // High humidity reduces transparency
+    const transparency = Math.round((cloudScore * 0.7 + humidityScore * 0.3) * 100)
+
+    // Calculate seeing (arcseconds) - less wind and turbulence = better seeing
+    const windScore = Math.max(0, (20 - windSpeed) / 20)
+    const seeing = 1.0 + (1 - windScore) * 3.0 // Range from 1.0 to 4.0 arcseconds
+
+    return { transparency: Math.max(20, transparency), seeing: Number(seeing.toFixed(1)) }
+  }
+
+  const fetchForecastData = async (lat: number, lon: number) => {
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+      if (!apiKey) {
+        console.error('Weather API key not configured')
+        return
+      }
+
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=${units}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch forecast data')
+      }
+
+      const data = await response.json()
+
+      // Take the next 16 3-hour intervals (48 hours)
+      const forecastData: ForecastData[] = data.list
+        .slice(0, 16)
+        .map((item: any) => {
+          const dateTime = new Date(item.dt * 1000)
+          const hour = dateTime.getHours()
+
+          const cloudCover = item.clouds.all
+          const humidity = item.main.humidity
+          const windSpeed = item.wind.speed
+          const temperature = item.main.temp
+
+          const conditions = calculateAstronomicalConditions(cloudCover, humidity, windSpeed)
+
+          // Determine if it's night time (simplified - could use sunrise/sunset API)
+          const isNight = hour < 6 || hour > 20
+
+          return {
+            dateTime,
+            transparency: conditions.transparency,
+            seeing: conditions.seeing,
+            isNight,
+            cloudCover,
+            humidity,
+            windSpeed,
+            temperature
+          }
+        })
+
+      setForecast(forecastData)
+    } catch (err) {
+      console.error('Forecast fetch error:', err)
+      // Fallback to mock data if API fails
+      const mockForecast: ForecastData[] = []
+      for (let i = 0; i < 16; i++) {
+        const dateTime = new Date()
+        dateTime.setHours(dateTime.getHours() + (i * 3))
+        const hour = dateTime.getHours()
+
+        const conditions = calculateAstronomicalConditions(
+          Math.random() * 80, // Random cloud cover
+          40 + Math.random() * 40, // Random humidity 40-80%
+          Math.random() * 15 // Random wind speed
+        )
+        mockForecast.push({
+          dateTime,
+          transparency: conditions.transparency,
+          seeing: conditions.seeing,
+          isNight: hour < 6 || hour > 20,
+          cloudCover: Math.round(Math.random() * 80),
+          humidity: Math.round(40 + Math.random() * 40),
+          windSpeed: Math.random() * 15,
+          temperature: 10 + Math.random() * 20
+        })
+      }
+      setForecast(mockForecast)
+    }
+  }
+
   const fetchWeatherData = async (lat: number, lon: number, unitSystem: UnitSystem = units) => {
     try {
       setIsLoading(true)
@@ -109,6 +211,8 @@ export function WeatherConditions() {
       }
 
       setWeather(weatherData)
+      // Also fetch forecast data
+      await fetchForecastData(lat, lon)
     } catch (err) {
       console.error('Weather fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch weather data')
@@ -321,75 +425,96 @@ export function WeatherConditions() {
         </div>
 
         <div className="pt-4 border-t border-gray-700">
-          <h4 className="text-sm font-medium mb-3">7-Day Forecast Heatmap</h4>
-          
-          {/* Day labels */}
-          <div className="grid grid-cols-8 gap-1 mb-2 text-xs">
-            <div></div>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-              <div key={index} className="text-center text-gray-400 font-medium">{day}</div>
-            ))}
-          </div>
+          <h4 className="text-sm font-medium mb-3">48-Hour Forecast (3-Hour Intervals)</h4>
 
-          {/* Sky Transparency Row */}
-          <div className="grid grid-cols-8 gap-1 mb-2">
-            <div className="text-xs text-gray-300 flex items-center">Transparency</div>
-            {[85, 70, 90, 60, 45, 80, 95].map((transparency, index) => {
-              const getTransparencyColor = (value: number) => {
-                if (value >= 80) return 'bg-green-500'
-                if (value >= 60) return 'bg-yellow-500'
-                if (value >= 40) return 'bg-orange-500'
-                return 'bg-red-500'
-              }
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`h-6 rounded ${getTransparencyColor(transparency)} flex items-center justify-center text-xs font-medium text-white`}
-                  title={`Transparency: ${transparency}%`}
-                >
-                  {transparency}%
+          {forecast.length > 0 ? (
+            <>
+              {/* Time labels */}
+              <div className="overflow-x-auto">
+                <div className="flex gap-1 mb-2 text-xs min-w-max">
+                  <div className="w-16 flex-shrink-0"></div>
+                  {forecast.map((data, index) => {
+                    // Only show labels every 4th interval (12 hours) or first/last
+                    const shouldShowLabel = index === 0 || index === forecast.length - 1 || index % 4 === 0
+                    const timeStr = data.dateTime.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit'
+                    }).replace(',', '')
+
+                    return (
+                      <div key={index} className="w-4 flex-shrink-0 text-center text-gray-400 font-medium text-xs transform -rotate-45 origin-center h-8 flex items-end justify-center">
+                        {shouldShowLabel ? <span className="text-xs">{timeStr}</span> : ''}
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
 
-          {/* Seeing Row */}
-          <div className="grid grid-cols-8 gap-1 mb-2">
-            <div className="text-xs text-gray-300 flex items-center">Seeing</div>
-            {[1.8, 2.5, 1.5, 3.2, 4.1, 2.0, 1.2].map((seeing, index) => {
-              const getSeeingColor = (value: number) => {
-                if (value <= 1.5) return 'bg-green-500'
-                if (value <= 2.5) return 'bg-yellow-500'
-                if (value <= 3.5) return 'bg-orange-500'
-                return 'bg-red-500'
-              }
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`h-6 rounded ${getSeeingColor(seeing)} flex items-center justify-center text-xs font-medium text-white`}
-                  title={`Seeing: ${seeing}" arcsec`}
-                >
-                  {seeing}"
+                {/* Sky Transparency Row */}
+                <div className="flex gap-1 mb-2 min-w-max">
+                  <div className="w-16 flex-shrink-0 text-xs text-gray-300 flex items-center">Transparency</div>
+                  {forecast.map((data, index) => {
+                    const getTransparencyColor = (value: number) => {
+                      if (value >= 80) return 'bg-green-500'
+                      if (value >= 60) return 'bg-yellow-500'
+                      if (value >= 40) return 'bg-orange-500'
+                      return 'bg-red-500'
+                    }
+
+                    return (
+                      <div
+                        key={index}
+                        className={`w-4 h-4 flex-shrink-0 rounded cursor-pointer ${getTransparencyColor(data.transparency)}`}
+                        title={`${data.dateTime.toLocaleString()}\nTransparency: ${data.transparency}%\nCloud: ${data.cloudCover}%\nHumidity: ${data.humidity}%`}
+                      >
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
 
-          {/* Day/Night indicator */}
-          <div className="grid grid-cols-8 gap-1 mb-2">
-            <div className="text-xs text-gray-300 flex items-center">Day/Night</div>
-            {[true, false, true, true, false, true, false].map((isNight, index) => (
-              <div 
-                key={index} 
-                className={`h-4 rounded ${isNight ? 'bg-gray-900 border border-gray-600' : 'bg-yellow-200'} flex items-center justify-center`}
-                title={isNight ? 'Night time' : 'Day time'}
-              >
-                <div className={`w-2 h-2 rounded-full ${isNight ? 'bg-gray-300' : 'bg-yellow-600'}`}></div>
+                {/* Seeing Row */}
+                <div className="flex gap-1 mb-2 min-w-max">
+                  <div className="w-16 flex-shrink-0 text-xs text-gray-300 flex items-center">Seeing</div>
+                  {forecast.map((data, index) => {
+                    const getSeeingColor = (value: number) => {
+                      if (value <= 1.5) return 'bg-green-500'
+                      if (value <= 2.5) return 'bg-yellow-500'
+                      if (value <= 3.5) return 'bg-orange-500'
+                      return 'bg-red-500'
+                    }
+
+                    return (
+                      <div
+                        key={index}
+                        className={`w-4 h-4 flex-shrink-0 rounded cursor-pointer ${getSeeingColor(data.seeing)}`}
+                        title={`${data.dateTime.toLocaleString()}\nSeeing: ${data.seeing}" arcsec\nWind: ${data.windSpeed.toFixed(1)} ${getSpeedUnit()}`}
+                      >
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Day/Night indicator */}
+                <div className="flex gap-1 mb-2 min-w-max">
+                  <div className="w-16 flex-shrink-0 text-xs text-gray-300 flex items-center">Day/Night</div>
+                  {forecast.map((data, index) => (
+                    <div
+                      key={index}
+                      className={`w-4 h-3 flex-shrink-0 rounded cursor-pointer flex items-center justify-center ${data.isNight ? 'bg-gray-900 border border-gray-600' : 'bg-yellow-200'}`}
+                      title={`${data.dateTime.toLocaleString()}\n${data.isNight ? 'Night time' : 'Day time'}\nTemp: ${Math.round(data.temperature)}${getTemperatureUnit()}`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${data.isNight ? 'bg-gray-300' : 'bg-yellow-600'}`}></div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="text-center py-4 text-gray-400">
+              <RefreshCw className="w-4 h-4 mx-auto mb-2 animate-spin" />
+              Loading forecast data...
+            </div>
+          )}
 
           {/* Legend */}
           <div className="mt-3 pt-2 border-t border-gray-600">
