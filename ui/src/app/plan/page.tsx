@@ -11,7 +11,10 @@ import { MoonPhase } from "@/components/MoonPhase";
 import { ObjectAltitudeDialog } from "@/components/object-altitude-dialog";
 import { Telescope, Search, Calendar, Plus, Clock, Trash2, Info } from "lucide-react";
 import { toast } from "sonner";
-import { AstroObject } from "@/lib/models";
+import { AstroObject, User } from "@/lib/models";
+import { DefaultBreadcrumb } from "@/components/default-breadcrumb";
+import { useUser } from "@clerk/nextjs";
+import { useAuthMode } from "@/hooks/useAuthMode";
 
 interface PlanningItem {
   id: string;
@@ -32,20 +35,47 @@ export default function PlanPage() {
   const [newItemStartTime, setNewItemStartTime] = useState("");
   const [newItemDuration, setNewItemDuration] = useState(30);
   const [showAltitudeDialog, setShowAltitudeDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    loadAstroObjects();
-  }, []);
+  const { user: clerkUser } = useUser();
+  const user: User | null = clerkUser ? {
+    id: clerkUser.id,
+    username: clerkUser.username || '',
+    first_name: clerkUser.firstName || '',
+    last_name: clerkUser.lastName || '',
+    name: clerkUser.fullName || clerkUser.username || '',
+    initials: `${clerkUser.firstName?.[0] || ''}${clerkUser.lastName?.[0] || ''}`,
+    avatar_url: clerkUser.imageUrl || '',
+    metadata_: {},
+    email: clerkUser.primaryEmailAddress?.emailAddress || '',
+  } : null;
 
-  const loadAstroObjects = async () => {
+  const { isSQLite } = useAuthMode();
+
+  const loadAstroObjects = async (query: string) => {
+    if (!query) {
+      setAstroObjects([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
     try {
-      const response = await fetch('/api/astro-objects');
+      const response = await fetch(`/api/lookup-astronomy-object?name=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch objects');
       }
       const objects = await response.json();
-      setAstroObjects(objects);
+      setAstroObjects(objects.map((obj: any) => ({
+        ...obj,
+        id: obj.name,
+        display_name: obj.name,
+        otype: obj.objectType,
+        metadata_: {
+          ra: obj.ra,
+          dec: obj.dec,
+          magnitude: obj.magnitude,
+        }
+      })));
     } catch (error) {
       console.error('Error loading astronomical objects:', error);
       toast.error('Failed to load astronomical objects');
@@ -54,10 +84,8 @@ export default function PlanPage() {
     }
   };
 
-  const filteredObjects = astroObjects.filter(obj =>
-    obj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (obj.display_name && obj.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // No need for filtering, API does it
+  const filteredObjects = astroObjects;
 
   const addToSchedule = () => {
     if (!selectedObject || !newItemStartTime) {
@@ -70,10 +98,10 @@ export default function PlanPage() {
       objectName: selectedObject.display_name || selectedObject.name,
       startTime: newItemStartTime,
       duration: newItemDuration,
-      ra: selectedObject.ra || '0',
-      dec: selectedObject.dec || '0',
-      magnitude: selectedObject.magnitude || 'N/A',
-      objectType: selectedObject.otype
+      ra: selectedObject.metadata_?.ra || '0',
+      dec: selectedObject.metadata_?.dec || '0',
+      magnitude: selectedObject.metadata_?.magnitude || 'N/A',
+      objectType: selectedObject.otype || undefined
     };
 
     setSchedule(prev => [...prev, newItem].sort((a, b) => a.startTime.localeCompare(b.startTime)));
@@ -89,8 +117,8 @@ export default function PlanPage() {
   const getRecommendedObjects = () => {
     // Simple recommendation based on magnitude (brighter objects)
     return astroObjects
-      .filter(obj => obj.magnitude && parseFloat(obj.magnitude) < 8)
-      .sort((a, b) => parseFloat(a.magnitude || '99') - parseFloat(b.magnitude || '99'))
+      .filter(obj => obj.metadata_?.magnitude && parseFloat(obj.metadata_?.magnitude) < 8)
+      .sort((a, b) => parseFloat(a.metadata_?.magnitude || '99') - parseFloat(b.metadata_?.magnitude || '99'))
       .slice(0, 10);
   };
 
@@ -111,6 +139,7 @@ export default function PlanPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <DefaultBreadcrumb user={isSQLite ? undefined : user!} pageName="Plan" />
       <div className="flex items-center gap-3 mb-8">
         <Telescope className="w-8 h-8 text-blue-400" />
         <h1 className="text-3xl font-bold">Astronomy Planning</h1>
@@ -146,13 +175,20 @@ export default function PlanPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="search">Search Objects</Label>
-                    <Input
-                      id="search"
-                      placeholder="Search by name (e.g., M31, Orion, NGC 7000)..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="mt-1"
-                    />
+                    <form onSubmit={(e) => { e.preventDefault(); loadAstroObjects(searchQuery); }}>
+                      <div className="flex">
+                        <Input
+                          id="search"
+                          placeholder="Search by name (e.g., M31, Orion, NGC 7000)..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="mt-1 rounded-r-none"
+                        />
+                        <Button type="submit" className="mt-1 rounded-l-none">
+                          <Search className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </form>
                   </div>
 
                   {isLoading ? (
@@ -179,9 +215,9 @@ export default function PlanPage() {
                                 </h3>
                                 <div className="text-sm text-muted-foreground space-x-4">
                                   <span>Type: {obj.otype || 'Unknown'}</span>
-                                  <span>Mag: {obj.magnitude || 'N/A'}</span>
-                                  {obj.ra && obj.dec && (
-                                    <span>RA: {obj.ra} Dec: {obj.dec}</span>
+                                  <span>Mag: {obj.metadata_?.magnitude || 'N/A'}</span>
+                                  {obj.metadata_?.ra && obj.metadata_?.dec && (
+                                    <span>RA: {obj.metadata_?.ra} Dec: {obj.metadata_?.dec}</span>
                                   )}
                                 </div>
                               </div>
@@ -220,17 +256,17 @@ export default function PlanPage() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Magnitude: </span>
-                          {selectedObject.magnitude || 'N/A'}
+                          {selectedObject.metadata_?.magnitude || 'N/A'}
                         </div>
-                        {selectedObject.ra && selectedObject.dec && (
+                        {selectedObject.metadata_?.ra && selectedObject.metadata_?.dec && (
                           <>
                             <div>
                               <span className="text-muted-foreground">RA: </span>
-                              {selectedObject.ra}
+                              {selectedObject.metadata_?.ra}
                             </div>
                             <div>
                               <span className="text-muted-foreground">Dec: </span>
-                              {selectedObject.dec}
+                              {selectedObject.metadata_?.dec}
                             </div>
                           </>
                         )}
@@ -272,7 +308,7 @@ export default function PlanPage() {
                               {obj.display_name || obj.name}
                             </h3>
                             <div className="text-sm text-muted-foreground">
-                              {obj.otype || 'Unknown'} • Mag: {obj.magnitude || 'N/A'}
+                              {obj.otype || 'Unknown'} • Mag: {obj.metadata_?.magnitude || 'N/A'}
                             </div>
                           </div>
                           <Button
@@ -392,8 +428,8 @@ export default function PlanPage() {
           open={showAltitudeDialog}
           onOpenChange={setShowAltitudeDialog}
           objectName={selectedObject.display_name || selectedObject.name}
-          ra={selectedObject.ra || '0'}
-          dec={selectedObject.dec || '0'}
+          ra={selectedObject.metadata_?.ra || '0'}
+          dec={selectedObject.metadata_?.dec || '0'}
         />
       )
       }

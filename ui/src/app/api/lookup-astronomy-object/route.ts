@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+function formatResult(result: any, objectName: string) {
+  return {
+    name: result[0] || objectName,
+    ra: formatRA(result[1]),
+    dec: formatDec(result[2]),
+    magnitude: result[4] !== null ? result[4] : "N/A",
+    size: "N/A",
+    objectType: result[3] || "Unknown"
+  };
+}
+
+function formatSimpleResult(result: any, objectName: string) {
+  return {
+    name: result.name || objectName,
+    ra: formatRA(result.ra_deg),
+    dec: formatDec(result.dec_deg),
+    magnitude: "N/A",
+    size: "N/A",
+    objectType: "Unknown"
+  };
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const objectName = searchParams.get("name");
@@ -28,9 +50,8 @@ export async function GET(request: NextRequest) {
       JOIN basic ON ident.oidref = basic.oid
       JOIN otypedef AS ot ON basic.otype = ot.otype
       LEFT JOIN allfluxes ON basic.oid = allfluxes.oidref
-      WHERE ident.id = '${objectName}'
-    `;
-    // note: had basic.main_id; switched to ident.id
+      WHERE ident.id LIKE '${objectName}%'
+    `; // Changed to LIKE
 
     const params = new URLSearchParams({
       request: 'doQuery',
@@ -50,69 +71,45 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     console.log(data);
 
-    if (!data.data || data.data.length === 0) {
-      // If object not found with the complex query, try a simpler one
-      const simpleQuery = `
-        SELECT main_id AS name,
-               ROUND(ra, 6) AS ra_deg,
-               ROUND(dec, 6) AS dec_deg
-          FROM basic
-         WHERE main_id LIKE '%${objectName}%'
-      `;
-
-      const simpleParams = new URLSearchParams({
-        request: 'doQuery',
-        lang: 'adql',
-        format: 'json',
-        query: simpleQuery
-      });
-
-      const simpleResponse = await fetch(`${endpoint}?${simpleParams}`);
-
-      if (!simpleResponse.ok) {
-        return NextResponse.json(
-          { error: "Object not found" },
-          { status: 404 }
-        );
-      }
-
-      const simpleData = await simpleResponse.json();
-
-      if (!simpleData.data || simpleData.data.length === 0) {
-        return NextResponse.json(
-          { error: "Object not found" },
-          { status: 404 }
-        );
-      }
-
-      const simpleResult = simpleData.data[0];
-
-      // Format the response with available data
-      const formattedSimpleResult = {
-        name: simpleResult.name || objectName,
-        ra: formatRA(simpleResult.ra_deg),
-        dec: formatDec(simpleResult.dec_deg),
-        magnitude: "N/A",
-        size: "N/A",
-        objectType: "Unknown"
-      };
-
-      return NextResponse.json(formattedSimpleResult);
+    if (data.data && data.data.length > 0) {
+      return NextResponse.json(data.data.map((result: any) => formatResult(result, objectName)));
     }
 
-    const result = data.data[0];
+    // If no results from complex query, try simple query
+    const simpleQuery = `
+      SELECT main_id AS name,
+             ROUND(ra, 6) AS ra_deg,
+             ROUND(dec, 6) AS dec_deg
+        FROM basic
+       WHERE main_id LIKE '%${objectName}%'
+    `;
 
-    // Format the response with all available data
-    const formattedResult = {
-      name: result[0] || objectName,
-      ra: formatRA(result[1]),
-      dec: formatDec(result[2]),
-      magnitude: result[4] !== null ? result[4]: "N/A",
-      size: "N/A", // Size isn't easily available in the basic query
-      objectType: result[3] || "Unknown"
-    };
+    const simpleParams = new URLSearchParams({
+      request: 'doQuery',
+      lang: 'adql',
+      format: 'json',
+      query: simpleQuery
+    });
 
-    return NextResponse.json(formattedResult);
+    const simpleResponse = await fetch(`${endpoint}?${simpleParams}`);
+
+    if (!simpleResponse.ok) {
+      return NextResponse.json(
+        { error: "Object not found" },
+        { status: 404 }
+      );
+    }
+
+    const simpleData = await simpleResponse.json();
+
+    if (!simpleData.data || simpleData.data.length === 0) {
+      return NextResponse.json(
+        { error: "Object not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(simpleData.data.map((result: any) => formatSimpleResult(result, objectName)));
   } catch (error) {
     console.error("Error fetching object data:", error);
     return NextResponse.json(

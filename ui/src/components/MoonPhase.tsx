@@ -4,15 +4,30 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {Moon as MoonIcon} from "lucide-react"
 import {MoonPhase as Moon} from "@/components/moon"
+import SunCalc from 'suncalc'
+import { format } from 'date-fns'
 
 export function MoonPhase() {
+  const now = new Date()
+  const moonIllumination = SunCalc.getMoonIllumination(now)
+  const moonTimes = SunCalc.getMoonTimes(now, 41.8781, -87.6298) // Chicago coordinates
+  const getPhaseName = (phase: number) => {
+    if (phase === 0) return 'New Moon';
+    if (phase < 0.25) return 'Waxing Crescent';
+    if (phase === 0.25) return 'First Quarter';
+    if (phase < 0.5) return 'Waxing Gibbous';
+    if (phase === 0.5) return 'Full Moon';
+    if (phase < 0.75) return 'Waning Gibbous';
+    if (phase === 0.75) return 'Last Quarter';
+    return 'Waning Crescent';
+  }
   const moon = {
-    phase: "Waxing Gibbous",
-    illumination: 78.5,
-    age: 10.2, // days since new moon
-    rise: "18:45",
-    set: "06:23",
-    isVisible: true,
+    phase: getPhaseName(moonIllumination.phase),
+    illumination: moonIllumination.fraction * 100,
+    age: moonIllumination.phase * 29.53,
+    rise: moonTimes.rise ? format(moonTimes.rise, 'HH:mm') : 'N/A',
+    set: moonTimes.set ? format(moonTimes.set, 'HH:mm') : 'N/A',
+    isVisible: !!moonTimes.rise && !!moonTimes.set,
   }
 
   return (

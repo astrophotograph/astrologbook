@@ -8,18 +8,18 @@ import {
 import {User} from "@/lib/models"
 import Config from "@/lib/config"
 
-export function DefaultBreadcrumb({user, pageName}: { user: User, pageName: string }) {
+export function DefaultBreadcrumb({user, pageName}: { user?: User, pageName: string }) {
   return (
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink href="/">Home</BreadcrumbLink>
         </BreadcrumbItem>
-        {!Config.singleUser && (
+        {!Config.singleUser && user && (
           <>
             <BreadcrumbSeparator/>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/u/${user?.id}`}>{user?.name}</BreadcrumbLink>
+              <BreadcrumbLink href={`/u/${user.id}`}>{user.name}</BreadcrumbLink>
             </BreadcrumbItem>
           </>
         )}

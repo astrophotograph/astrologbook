@@ -320,6 +320,18 @@ export function WeatherConditions() {
           </div>
         </div>
 
+        <div className="pt-4 border-t border-gray-700">
+          <h4 className="text-sm font-medium mb-2">7-Day Forecast (Sky Transparency & Seeing)</h4>
+          <div className="space-y-2 text-sm">
+            {['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'].map((day, index) => (
+              <div key={index} className="flex justify-between">
+                <span>{day}</span>
+                <span>Transparency: High, Seeing: Good</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Weather Status Indicator */}
         <div className="pt-2 border-t border-gray-700">
           <div className="flex items-center justify-between">
