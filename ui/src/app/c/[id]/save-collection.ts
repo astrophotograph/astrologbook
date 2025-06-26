@@ -25,7 +25,8 @@ export async function saveCollection(values: z.infer<typeof formSchema>) {
     {
       name: values.name,
       description: values.description,
-      tags: values.tags,
+      tags: values.tags?.trim() || null, // Convert empty string to null
+      favorite: values.favorite || false,
       metadata_: updatedMetadata, // Sequelize model handles JSON serialization
     },
     {

@@ -14,6 +14,7 @@ export interface ImageAttributes {
   tags?: string;
   visibility?: string;
   location?: string;
+  annotations?: Record<string, any>[];
   metadata_?: Record<string, any>;
   created_at: Date;
   updated_at: Date;
@@ -35,6 +36,7 @@ export class Image extends Model<ImageAttributes, ImageCreationAttributes>
   public tags?: string;
   public visibility?: string;
   public location?: string;
+  public annotations?: Record<string, any>[];
   public metadata_?: Record<string, any>;
   public created_at!: Date;
   public updated_at!: Date;
@@ -93,6 +95,17 @@ Image.init(
     location: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    annotations: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      get() {
+        const value = this.getDataValue('annotations');
+        return value ? JSON.parse(value) : [];
+      },
+      set(value: any) {
+        this.setDataValue('annotations', value ? JSON.stringify(value) : null);
+      },
     },
     metadata_: {
       type: DataTypes.TEXT,

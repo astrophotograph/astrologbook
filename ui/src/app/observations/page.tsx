@@ -1,12 +1,13 @@
 import {fetchAstroObservations, fetchUser} from "@/lib/db"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
 import {enrichCollections} from "@/components/enrichCollections"
-import {ObservationLogCard} from "@/components/observation-log-card"
+import {ObservationLogCard} from "@/components/observation-log-card-server"
 import {shouldUseSQLiteAutoLoginServer} from "@/lib/auth/server"
 import {getDefaultUserId} from "@/lib/database"
 import {currentUser} from "@clerk/nextjs/server"
 import {redirect} from "next/navigation"
 import {CreateCollectionDialog} from "@/components/create-collection-dialog"
+import {isOwner} from "@/lib/aaa"
 
 export default async function AstroLogPage() {
   let user
@@ -42,6 +43,9 @@ export default async function AstroLogPage() {
   const initialCollections = await fetchAstroObservations(user.id)
   const rawCollections = await enrichCollections(initialCollections)
   const collections = rawCollections.filter((item) => !item.favorite)
+  
+  // Check if user can edit collections
+  const canEdit = await isOwner(user)
 
   const groupedCollections = collections.reduce((acc, collection) => {
     const date = new Date(collection.session_date!)
@@ -51,6 +55,22 @@ export default async function AstroLogPage() {
       [monthYear]: [...(acc[monthYear] || []), collection],
     }
   }, {} as Record<string, typeof collections>)
+
+  // Sort month groups in reverse chronological order and sort collections within each month
+  const sortedMonthEntries = Object.entries(groupedCollections)
+    .sort(([monthYearA], [monthYearB]) => {
+      const dateA = new Date(monthYearA + ' 1') // Add day to make it a valid date
+      const dateB = new Date(monthYearB + ' 1')
+      return dateB.getTime() - dateA.getTime()
+    })
+    .map(([monthYear, monthCollections]) => [
+      monthYear,
+      monthCollections.sort((a, b) => {
+        const aDate = new Date(a.session_date!)
+        const bDate = new Date(b.session_date!)
+        return bDate.getTime() - aDate.getTime()
+      })
+    ] as [string, typeof monthCollections])
 
   return (
     <main className="container mx-auto py-8 flex-grow relative">
@@ -64,13 +84,18 @@ export default async function AstroLogPage() {
         the raw, out-of-scope photos without any formal processing. At times, it may include a combination of
         out-of-scope and post-processed photos. But they will always be clearly marked.
       </p>
-      {Object.entries(groupedCollections).map(([monthYear, monthCollections]) => (
+      {sortedMonthEntries.map(([monthYear, monthCollections]) => (
         <div key={monthYear} className={''}>
           <h4 className="text-xl font-semibold mt-8 mb-4 bg-slate-800 p-3 rounded sticky top-0 z-50">{monthYear}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {monthCollections.map((collection) => (
               <div key={collection.id}>
-                <ObservationLogCard collection={collection} size={'medium'}/>
+                <ObservationLogCard 
+                  collection={collection} 
+                  size={'medium'}
+                  user={user}
+                  isEditable={canEdit && collection.user_id === user.id}
+                />
               </div>
             ))}
           </div>

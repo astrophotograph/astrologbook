@@ -8,6 +8,8 @@ export interface CollectionAttributes {
   description?: string;
   visibility: string;
   template?: string;
+  favorite?: boolean;
+  tags?: string;
   metadata_?: Record<string, any>;
   created_at: Date;
   updated_at: Date;
@@ -24,6 +26,8 @@ export class Collection extends Model<CollectionAttributes, CollectionCreationAt
   public description?: string;
   public visibility!: string;
   public template?: string;
+  public favorite?: boolean;
+  public tags?: string;
   public metadata_?: Record<string, any>;
   public created_at!: Date;
   public updated_at!: Date;
@@ -61,6 +65,15 @@ Collection.init(
       },
     },
     template: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    favorite: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
+    tags: {
       type: DataTypes.STRING,
       allowNull: true,
     },

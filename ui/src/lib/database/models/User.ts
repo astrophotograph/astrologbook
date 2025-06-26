@@ -6,6 +6,12 @@ export interface UserAttributes {
   email?: string;
   name?: string;
   image?: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  summary?: string;
+  bio?: string;
+  description?: string;
   metadata_?: Record<string, any>;
   created_at: Date;
   updated_at: Date;
@@ -18,6 +24,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare email?: string;
   declare name?: string;
   declare image?: string;
+  declare username?: string;
+  declare first_name?: string;
+  declare last_name?: string;
+  declare summary?: string;
+  declare bio?: string;
+  declare description?: string;
   declare metadata_?: Record<string, any>;
   declare created_at: Date;
   declare updated_at: Date;
@@ -42,6 +54,30 @@ User.init(
     },
     image: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    first_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    last_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    summary: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     metadata_: {

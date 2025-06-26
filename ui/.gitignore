@@ -99,3 +99,8 @@ next-env.d.ts
 database.sqlite*
 
 z
+
+uploads/**/*.png
+uploads/**/*.jpg
+public/uploads/**/*.png
+public/uploads/**/*.jpg

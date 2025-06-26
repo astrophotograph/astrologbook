@@ -7,6 +7,8 @@ export interface AstroObjectAttributes {
   display_name: string;
   otype?: string;
   seq?: number;
+  aliases?: string;
+  notes?: string;
   metadata_?: Record<string, any>;
   created_at: Date;
   updated_at: Date;
@@ -22,6 +24,8 @@ export class AstroObject extends Model<AstroObjectAttributes, AstroObjectCreatio
   declare display_name: string;
   declare otype?: string;
   declare seq?: number;
+  declare aliases?: string;
+  declare notes?: string;
   declare metadata_?: Record<string, any>;
   declare created_at: Date;
   declare updated_at: Date;
@@ -49,6 +53,14 @@ AstroObject.init(
     },
     seq: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    aliases: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    notes: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     metadata_: {
