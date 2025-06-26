@@ -6,6 +6,7 @@ import {shouldUseSQLiteAutoLoginServer} from "@/lib/auth/server"
 import {getDefaultUserId} from "@/lib/database"
 import {currentUser} from "@clerk/nextjs/server"
 import {redirect} from "next/navigation"
+import {CreateCollectionDialog} from "@/components/create-collection-dialog"
 
 export default async function AstroLogPage() {
   let user
@@ -54,7 +55,10 @@ export default async function AstroLogPage() {
   return (
     <main className="container mx-auto py-8 flex-grow relative">
       <DefaultBreadcrumb user={user} pageName={'Astro Log'}/>
-      <h3 className="text-2xl font-semibold my-6">Observation Log</h3>
+      <div className="flex justify-between items-center my-6">
+        <h3 className="text-2xl font-semibold">Observation Log</h3>
+        <CreateCollectionDialog defaultTemplate="astrolog" />
+      </div>
       <p className={''}>
         Daily observation logs. Photos and some commentary. Most of these include just
         the raw, out-of-scope photos without any formal processing. At times, it may include a combination of

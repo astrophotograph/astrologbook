@@ -97,3 +97,5 @@ next-env.d.ts
 /.clerk/
 
 database.sqlite*
+
+z

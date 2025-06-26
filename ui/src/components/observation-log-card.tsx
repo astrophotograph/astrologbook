@@ -21,7 +21,7 @@ export async function ObservationLogCard({collection, defaultPath, size = 'small
   }
 
   return (
-    <a href={`/c/${collection.id}`}>
+    // <a href={`/c/${collection.id}`}>
       <Card className={cx('pt-0 relative overflow-hidden', containerHeight)}>
         <CardContent className={'p-0 relative overflow-hidden'}>
           <img src={collection.favorite_image!}
@@ -29,9 +29,9 @@ export async function ObservationLogCard({collection, defaultPath, size = 'small
                className={"object-cover w-full h-96 relative"}/>
           <div className={'absolute bottom-1 left-1 text-sm'}>{imageCount} photos</div>
           <div className={'absolute bottom-1 right-1 space-x-2'}>
-            {tags.map((tag) => (
-              <span key={tag} className={'bg-amber-800 px-2 py-0.5 text-xs rounded-lg'}>{tag}</span>
-            ))}
+            {/*{tags.map((tag) => (*/}
+            {/*  <span key={tag} className={'bg-amber-800 px-2 py-0.5 text-xs rounded-lg'}>{tag}</span>*/}
+            {/*))}*/}
           </div>
         </CardContent>
         <p className={'absolute bottom-0 left-0 right-0 text-center'}>{collection.session_date || collection.name}</p>
@@ -40,6 +40,6 @@ export async function ObservationLogCard({collection, defaultPath, size = 'small
         {/*  <CardDescription className={'truncate'}>{collection.description}</CardDescription>*/}
         {/*</CardHeader>*/}
       </Card>
-    </a>
+    // </a>
   )
 }
