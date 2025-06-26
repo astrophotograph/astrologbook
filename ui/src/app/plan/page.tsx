@@ -14,7 +14,7 @@ import {Calendar, Clock, Info, Plus, Search, Telescope, Trash2} from "lucide-rea
 import {toast} from "sonner"
 import {AstroObject, User} from "@/lib/models"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
-import {useConditionalAuth} from "@/hooks/useConditionalAuth"
+import {useAuth} from "@/hooks/useAuth"
 
 interface PlanningItem {
   id: string;
@@ -37,9 +37,19 @@ export default function PlanPage() {
   const [showAltitudeDialog, setShowAltitudeDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { user: clerkUser } = useConditionalAuth();
+  const { user: clerkUser, isSQLiteMode } = useAuth();
 
-  const user: User | null = clerkUser ? {
+  const user: User | null = isSQLiteMode ? {
+    id: 'sqlite-default-user',
+    username: 'Default User',
+    first_name: 'Default',
+    last_name: 'User',
+    name: 'Default User',
+    initials: 'DU',
+    avatar_url: '',
+    metadata_: {},
+    email: 'user@example.com',
+  } : clerkUser ? {
     id: clerkUser.id,
     username: clerkUser.username || '',
     first_name: clerkUser.firstName || '',
@@ -138,7 +148,7 @@ export default function PlanPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <DefaultBreadcrumb user={clerkUser ? user! : undefined} pageName="Plan" />
+      <DefaultBreadcrumb user={user || undefined} pageName="Plan" />
       <div className="flex items-center gap-3 mb-8">
         <Telescope className="w-8 h-8 text-blue-400" />
         <h1 className="text-3xl font-bold">Astronomy Planning</h1>

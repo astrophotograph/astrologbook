@@ -6,6 +6,7 @@ import {initializeAssociations} from './associations'
 import {initializeSQLite} from './hooks'
 import {User} from './models/User'
 import {getDatabaseConfig} from './config'
+import {startPeriodicBackups, stopPeriodicBackups} from './scheduler'
 
 export { sequelize, withTransaction, getSequelize, Op, Transaction, QueryTypes } from './connection';
 
@@ -91,6 +92,12 @@ export const initializeDatabase = async (): Promise<void> => {
 
     // Create default user for SQLite
     await createDefaultUser();
+
+    // Start periodic backups for SQLite
+    const config = getDatabaseConfig();
+    if (config.dialect === 'sqlite') {
+      startPeriodicBackups();
+    }
   } catch (error) {
     console.error('Unable to connect to the database:', error);
     throw error;
@@ -99,6 +106,11 @@ export const initializeDatabase = async (): Promise<void> => {
 
 // Close database connection
 export const closeDatabase = async (): Promise<void> => {
+  stopPeriodicBackups();
   await sequelize.close();
 };
+
+// Export backup functionality
+export * from './backup';
+export * from './scheduler';
 

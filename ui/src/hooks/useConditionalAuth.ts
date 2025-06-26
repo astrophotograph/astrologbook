@@ -1,44 +1,48 @@
 'use client'
 
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useAuthMode } from "./useAuthMode";
 
 /**
- * Hook that conditionally uses Clerk auth hooks only when not in SQLite mode
- * This prevents React hooks from being called when ClerkProvider is not available
+ * Hook that provides auth information based on the current auth mode
+ * Returns SQLite default values when in SQLite mode, loading state otherwise
  */
 export function useConditionalAuth() {
-  const { isSQLite } = useAuthMode();
+  const { isSQLite, isLoading: authModeLoading, error } = useAuthMode();
   
-  // Always call the hooks, but ignore results in SQLite mode
-  const clerkAuth = useAuth();
-  const clerkUser = useUser();
-  
-  if (isSQLite) {
+  // While checking auth mode, return loading state
+  if (authModeLoading) {
     return {
-      // Auth hook results
+      userId: null,
+      isLoaded: false,
+      isSignedIn: false,
+      user: null,
+      effectiveUserId: null,
+      effectiveIsSignedIn: false,
+      effectiveIsLoaded: false,
+    };
+  }
+  
+  // If there's an error checking auth mode, assume SQLite
+  if (error || isSQLite) {
+    return {
       userId: null,
       isLoaded: true,
       isSignedIn: false,
-      // User hook results  
       user: null,
-      // Effective values for SQLite mode
       effectiveUserId: 'sqlite-default-user',
       effectiveIsSignedIn: true,
       effectiveIsLoaded: true,
     };
   }
   
+  // For non-SQLite mode, return default values and let the component handle Clerk
   return {
-    // Auth hook results
-    userId: clerkAuth.userId,
-    isLoaded: clerkAuth.isLoaded,
-    isSignedIn: clerkAuth.isSignedIn,
-    // User hook results
-    user: clerkUser.user,
-    // Effective values (same as Clerk values in non-SQLite mode)
-    effectiveUserId: clerkAuth.userId,
-    effectiveIsSignedIn: clerkAuth.isSignedIn,
-    effectiveIsLoaded: clerkAuth.isLoaded,
+    userId: null,
+    isLoaded: false,
+    isSignedIn: false,
+    user: null,
+    effectiveUserId: null,
+    effectiveIsSignedIn: false,
+    effectiveIsLoaded: false,
   };
 }

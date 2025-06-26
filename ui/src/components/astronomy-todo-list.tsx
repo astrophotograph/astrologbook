@@ -27,11 +27,11 @@ import {SyncStatus} from "@/components/sync-status"
 import {DataManagementDropdown} from "@/components/data-management-dropdown"
 import {ImportDialog} from "@/components/import-dialog"
 import {useDataSync} from "@/components/use-data-sync"
-import {useConditionalAuth} from "@/hooks/useConditionalAuth"
+import {useAuth} from "@/hooks/useAuth"
 
 // Main Component
 export function AstronomyTodoList() {
-  const { effectiveUserId, effectiveIsSignedIn, effectiveIsLoaded } = useConditionalAuth();
+  const { effectiveUserId, effectiveIsSignedIn, effectiveIsLoaded } = useAuth();
   const [objectName, setObjectName] = useState("");
   const [notes, setNotes] = useState("");
   const [isLookupLoading, setIsLookupLoading] = useState(false);
