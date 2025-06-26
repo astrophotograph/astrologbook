@@ -1,4 +1,4 @@
-import {Image} from "@/lib/models"
+import {Image, getImageUrl} from "@/lib/models"
 
 export function ImageThumbnail({image, checkCompleteImage}: { checkCompleteImage: boolean, image: Image }) {
   return (
@@ -8,7 +8,7 @@ export function ImageThumbnail({image, checkCompleteImage}: { checkCompleteImage
         <div className="absolute left-0 bottom-0 z-50">{image.short_name}</div>
         {/*{% if image.id %}*/}
         <img className="object-cover absolute min-w-full min-h-full "
-             src={`https://m.astrophotography.tv/i/${image.user_id}/1000/${image.id}.jpg`}
+             src={getImageUrl(image)}
              alt={image.summary || ''}/>
         {checkCompleteImage && (
           <div className="absolute right-0 bottom-0">

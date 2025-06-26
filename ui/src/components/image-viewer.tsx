@@ -187,6 +187,7 @@ export function ImageViewer({user, image}: { user: User, image: ImageModel }) {
     }
   }
 
+  // todo : ensure metadata is complete!  specifically dimensions!
   return (
     <div className="flex flex-col lg:flex-row gap-8 mt-3">
       <div className="lg:w-2/3">
@@ -214,8 +215,8 @@ export function ImageViewer({user, image}: { user: User, image: ImageModel }) {
                  alt=""
                  placeholder={placeholder ? 'blur' : 'empty'}
                  blurDataURL={placeholder}
-                 width={image.metadata_.width}
-                 height={image.metadata_.height}
+                 width={image.metadata_.width || 1080}
+                 height={image.metadata_.height || 1080}
                  className="w-full h-auto rounded-lg"
                  draggable={false}
           />

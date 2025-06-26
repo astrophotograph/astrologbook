@@ -5,7 +5,7 @@ import {AstroLogImage} from "@/app/c/[id]/astro-log-image"
 import {YouTube} from "@/components/youtube"
 import {MoonPhase} from "@/components/moon"
 
-export async function AstroLogCollection({id, user, collection}: { id: string, user: User, collection: Collection }) {
+export async function AstroLogCollection({user, collection}: { user: User, collection: Collection }) {
   const rawImage = await fetchCollectionImages(collection.id)
   const images = rawImage.filter((image) => !!image.description)
   const imagesNoDescription = rawImage.filter((image) => !image.description)
@@ -15,13 +15,11 @@ export async function AstroLogCollection({id, user, collection}: { id: string, u
     <main className="container mx-auto py-8 lg:px-20">
       <CollectionHeader name={`AstroLog - ${collection.session_date}`} user={user} collection={collection}/>
 
-      <div className={'flex space-x-5'}>
+      <div className={'flex flex-col lg:flex-row lg:space-x-5 space-y-5 lg:space-y-0'}>
         <article
-          className="prose lg:prose-xl prose-invert prose-img:rounded-xl prose-figcaption:text-sm prose-figcaption:text-center prose-img:mt-0"
-          suppressHydrationWarning>
-          <p
-            dangerouslySetInnerHTML={{__html: collection.description_html}}
-          />
+          className="prose lg:prose-xl prose-invert prose-img:rounded-xl prose-figcaption:text-sm prose-figcaption:text-center prose-img:mt-0 flex-1"
+          >
+          <p dangerouslySetInnerHTML={{__html: collection.description_html}} />
 
           <div className="mt-6 space-y-5">
             {images.map((image, index) => (
@@ -34,7 +32,7 @@ export async function AstroLogCollection({id, user, collection}: { id: string, u
           </div>
 
         </article>
-        <div className={'hidden lg:block lg:py-7 lg:space-y-7'}>
+        <div className={'lg:py-7 space-y-5 lg:space-y-7 w-full lg:w-80 flex-shrink-0 order-first lg:order-last'}>
           {video_id && <YouTube title={collection.name} id={video_id}/>}
 
           <div>

@@ -1,10 +1,12 @@
 import {Redis} from '@upstash/redis'
 import { sequelize } from '@/lib/database'
+import { getImageUrl } from '@/lib/models'
 
 interface ImageResult {
   id: string;
   user_id: string;
   favorite: boolean;
+  url?: string;
 }
 
 // Initialize Redis
@@ -48,7 +50,7 @@ export async function favoriteImage(collection_id: string) {
   // Determine the URL
   const imageUrl = !image
     ? '/ph/static/empty-collection.svg'
-    : `https://m.astrophotography.tv/i/${image.user_id}/1000/${image.id}.jpg`
+    : getImageUrl(image as any)
 
   // Store the URL in Redis for future requests
   // You can set an expiration time if needed (e.g., 3600 for 1 hour)

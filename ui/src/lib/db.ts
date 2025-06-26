@@ -3,8 +3,8 @@
 import { sequelize, User, AstronomyTodo, AstroObject, Collection, Image, Op, withTransaction } from '@/lib/database';
 import {
   AstroObject as AstroObjectType,
-  Collection as CollectionType,
-  Image as ImageType,
+  Collection as CollectionType, CollectionSchema,
+  Image as ImageType, ImageSchema,
   User as UserType,
 } from "@/lib/models"
 import {marked} from "marked"
@@ -208,7 +208,7 @@ export async function syncAstronomyTodoItems(
 
 export async function fetchUser(id: string): Promise<UserType | null> {
   const user = await User.findByPk(id);
-  console.log('User:', user?.toJSON(), { id });
+  // console.log('User:', user?.toJSON(), { id });
   return user ? user.toJSON() as UserType : null;
 }
 
@@ -255,7 +255,7 @@ export async function fetchAstroObservations(user_id: string, visibility: string
     return bDate.localeCompare(aDate);
   });
 
-  return sorted.map(o => o.toJSON()) as CollectionType[];
+  return sorted.map(o => CollectionSchema.parse(o.toJSON())) as CollectionType[];
 }
 
 export async function fetchCatalogObjects(catalog: string): Promise<Array<AstroObjectType>> {
@@ -276,7 +276,7 @@ export async function fetchCatalogObjects(catalog: string): Promise<Array<AstroO
 
 export async function fetchCollection(collection_id: string): Promise<CollectionType | null> {
   const collection = await Collection.findByPk(collection_id);
-  return collection ? collection.toJSON() as CollectionType : null;
+  return collection ? CollectionSchema.parse(collection.toJSON()) : null;
 }
 
 export async function fetchCollectionImages(collection_id: string): Promise<Array<ImageType>> {
@@ -287,7 +287,7 @@ export async function fetchCollectionImages(collection_id: string): Promise<Arra
     }],
   });
 
-  return collection?.images?.map(img => img.toJSON()) as ImageType[] || [];
+  return collection?.images?.map(img => ImageSchema.parse(img.toJSON())) as ImageType[] || [];
 }
 
 export async function fetchCollectionImageCount(collection_id: string): Promise<number> {
@@ -311,14 +311,23 @@ export async function fetchCollectionStats(collection_id: string) {
 
 export async function fetchImage(image_id: string): Promise<ImageType | null> {
   const image = await Image.findByPk(image_id);
-  return image ? image.toJSON() as ImageType : null;
+  return image ? ImageSchema.parse(image.toJSON()) : null;
+}
+
+export async function fetchUserImages(userId: string): Promise<Array<ImageType>> {
+  const images = await Image.findAll({
+    where: { user_id: userId },
+    order: [['created_at', 'DESC']],
+  });
+
+  return images.map(img => img.toJSON()) as ImageType[];
 }
 
 export async function fetchAstroObjectByName(name: string): Promise<AstroObjectType | null> {
   const astroObject = await AstroObject.findOne({
     where: { name },
   });
-  console.log('Astro object:', astroObject?.toJSON(), { name });
+  // console.log('Astro object:', astroObject?.toJSON(), { name });
   return astroObject ? astroObject.toJSON() as AstroObjectType : null;
 }
 
@@ -372,7 +381,7 @@ export function transformAstroObject(object: AstroObjectType){
 
   const object_type = ObjectTypeMap[object.otype || 'unknown'] || object.otype;
 
-  console.log(object)
+  // console.log(object)
   return {
     ...object,
     title,

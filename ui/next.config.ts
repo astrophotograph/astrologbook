@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['astroroot.vercel.app', 'photohosting.vercel.app', 'astrophotography.tv', 'www.astrophotography.tv'],
     },
   },
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/uploads/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

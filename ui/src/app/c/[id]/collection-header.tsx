@@ -1,5 +1,6 @@
 import {Collection, User} from "@/lib/models"
 import {EditCollectionForm} from "@/app/c/[id]/edit-collection-form"
+import {AddImageForm} from "@/app/c/[id]/add-image-form"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
 import {isOwner} from "@/lib/aaa"
 
@@ -22,7 +23,8 @@ export async function CollectionHeader({name, user, collection}: {
             {name}
           </h2>
         </div>
-        <div className={'mt-4 flex shrink-0 md:ml-4 md:mt-0'}>
+        <div className={'mt-4 flex gap-2 shrink-0 md:ml-4 md:mt-0'}>
+          {owner && <AddImageForm collection={collection} user={user}/>}
           {owner && <EditCollectionForm collection={collection}/>}
           {/*<button type='button' className={'inline-flex items-center rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-white/20'}>*/}
           {/*  Edit*/}

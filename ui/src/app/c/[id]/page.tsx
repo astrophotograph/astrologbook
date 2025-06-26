@@ -17,7 +17,7 @@ export default async function CollectionPage({
   }
 
   if (collection.template === 'astrolog') {
-    return <AstroLogCollection id={id} user={user} collection={collection}/>
+    return <AstroLogCollection user={user} collection={collection}/>
   }
 
   if (collection.template === 'messier') {

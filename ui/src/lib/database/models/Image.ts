@@ -7,6 +7,13 @@ export interface ImageAttributes {
   user_id: string;
   filename: string;
   url?: string;
+  summary?: string;
+  description?: string;
+  content_type?: string;
+  favorite?: boolean;
+  tags?: string;
+  visibility?: string;
+  location?: string;
   metadata_?: Record<string, any>;
   created_at: Date;
   updated_at: Date;
@@ -21,6 +28,13 @@ export class Image extends Model<ImageAttributes, ImageCreationAttributes>
   public user_id!: string;
   public filename!: string;
   public url?: string;
+  public summary?: string;
+  public description?: string;
+  public content_type?: string;
+  public favorite?: boolean;
+  public tags?: string;
+  public visibility?: string;
+  public location?: string;
   public metadata_?: Record<string, any>;
   public created_at!: Date;
   public updated_at!: Date;
@@ -46,6 +60,37 @@ Image.init(
       allowNull: false,
     },
     url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    summary: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    content_type: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'image/jpeg',
+    },
+    favorite: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
+    tags: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'private',
+    },
+    location: {
       type: DataTypes.STRING,
       allowNull: true,
     },

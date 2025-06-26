@@ -270,10 +270,21 @@ export const MessierNames = {
 //   }
 // }
 
-// export const getImageUrl = (image: Record<string, any>): string => {
-//   const extension = getExtension(image)
-//   return `https://m.astrophotography.tv/i/${image.user_id}/${image.id}${extension}`
-// }
+function getImageUrlDirect(url: string, id: string, user_id: string, size: string = '1000'): string {
+  // If image has a local URL (uploaded file), serve from uploads path
+  if (url && url.startsWith('uploads/')) {
+    const relativePath = url.replace('uploads/', '')
+    return `/uploads/${relativePath}`
+  }
+
+  // Otherwise use external URL (legacy images)
+  return `https://m.astrophotography.tv/i/${user_id}/${size}/${id}.jpg`
+
+}
+
+export const getImageUrl = (image: Image, size: string = '1000'): string => {
+  return getImageUrlDirect(image.url!, image.id!, image.user_id!, size)
+}
 
 
 // Helper function (you would need to implement this with a library like marked)
@@ -342,7 +353,7 @@ export const CollectionSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   favorite: z.boolean().default(false),
-  tags: z.string().nullable(),
+  tags: z.string().nullish(),
   visibility: z.string().default('private'),
   metadata_: z.record(z.any()).default({}),
   created_at: z.date().default(utcNow),
@@ -355,7 +366,6 @@ export const CollectionSchema = z.object({
     return convertMarkdownToHtml(values.description)
   },
   get session_date() {
-    // return values.metadata_ && values.metadata_.session_date ? new Date(values.metadata_.session_date).toDateString(): null
     if (!values.metadata_ || !values.metadata_.session_date) return null
 
     // const date = new Date(values.metadata_.session_date)
@@ -388,14 +398,16 @@ export const getDescriptionHtml = (collection: Collection): string => {
 export const ImageSchema = z.object({
   id: z.string().nullish(), // This should be sha256
   user_id: z.string().nullable(),
+  filename: z.string(),
+  url: z.string().nullable(),
   summary: z.string().nullable(), // is this really nullable?
-  content_type: z.string().default('image/png'),
   description: z.string().nullable(),
+  content_type: z.string().default('image/png'),
   favorite: z.boolean().default(false),
   tags: z.string().nullable(),
   visibility: z.string().default('private'),
   location: z.string().nullable(),
-  annotations: z.record(z.any()).array().default([]),
+  annotations: z.record(z.any()).array().default([]), // ??
   metadata_: z.record(z.any()).default({}),
   created_at: z.date().default(() => new Date()),
   updated_at: z.date().nullable(),
@@ -405,12 +417,13 @@ export const ImageSchema = z.object({
   name: z.string().optional(),
 }).transform(values => ({
   ...values,
-  // get image_url() {
-  //   return getImageUrl(values)
-  // },
-  // get normalized_annotations() {
-  //   return getNormalizedAnnotations(values, NGC_TO_MESSIER)
-  // },
+  get image_url() {
+    return getImageUrlDirect(values.url!, values.id!, values.user_id!)
+  },
+  get normalized_annotations() {
+    return []
+    // return getNormalizedAnnotations(values, NGC_TO_MESSIER)
+  },
   get description_html() {
     return convertMarkdownToHtml(values.description)
   },
