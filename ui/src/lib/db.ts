@@ -15,6 +15,8 @@ import ObjectTypeMap from "@/lib/objectTypeMap"
 // Add these new functions to db.ts
 import {z} from "zod"
 import {AstronomyObject} from "@/components/todo-list-types"
+import {getImageDimensions} from "@/lib/utils"
+import {readFile} from 'fs/promises'
 
 // Update the AstronomyTodoSchema to include the flagged field
 const AstronomyTodoSchema = z.object({
@@ -34,8 +36,6 @@ const AstronomyTodoSchema = z.object({
   flagged: z.boolean().optional().default(false), // New field with default value
   last_updated: z.string().nullish(),
 });
-
-const AstronomyTodoArraySchema = z.array(AstronomyTodoSchema);
 
 // Fetch all astronomy todo items for a user
 export async function fetchAstronomyTodoItems(userId: string): Promise<AstronomyObject[]> {
@@ -289,7 +289,16 @@ export async function fetchCollectionImages(collection_id: string): Promise<Arra
     }],
   });
 
-  return collection?.images?.map(img => ImageSchema.parse(img.toJSON())) as ImageType[] || [];
+  if (!collection?.images) return [];
+  
+  const imageDataList = collection.images.map(img => img.toJSON()) as ImageType[];
+  
+  // Ensure dimensions for all images
+  for (const imageData of imageDataList) {
+    await ensureImageDimensions(imageData);
+  }
+  
+  return imageDataList.map(img => ImageSchema.parse(img));
 }
 
 export async function fetchCollectionImageCount(collection_id: string): Promise<number> {
@@ -313,7 +322,11 @@ export async function fetchCollectionStats(collection_id: string) {
 
 export async function fetchImage(image_id: string): Promise<ImageType | null> {
   const image = await Image.findByPk(image_id);
-  return image ? ImageSchema.parse(image.toJSON()) : null;
+  if (!image) return null;
+  
+  const imageData = image.toJSON() as ImageType;
+  await ensureImageDimensions(imageData);
+  return ImageSchema.parse(imageData);
 }
 
 export async function fetchUserImages(userId: string): Promise<Array<ImageType>> {
@@ -322,7 +335,14 @@ export async function fetchUserImages(userId: string): Promise<Array<ImageType>>
     order: [['created_at', 'DESC']],
   });
 
-  return images.map(img => img.toJSON()) as ImageType[];
+  const imageDataList = images.map(img => img.toJSON()) as ImageType[];
+  
+  // Ensure dimensions for all images
+  for (const imageData of imageDataList) {
+    await ensureImageDimensions(imageData);
+  }
+  
+  return imageDataList;
 }
 
 export async function fetchAstroObjectByName(name: string): Promise<AstroObjectType | null> {
@@ -395,4 +415,36 @@ export function transformAstroObject(object: AstroObjectType){
     description_html: !!object.metadata_?.description ? marked.parse(object.metadata_?.description) : null,
   }
 
+}
+
+export async function ensureImageDimensions(imageData: ImageType): Promise<void> {
+  // Check if dimensions are already in metadata
+  if (imageData.metadata_?.width && imageData.metadata_?.height) {
+    return;
+  }
+
+  try {
+    // Try to read the image file and extract dimensions
+    const buffer = await readFile(imageData.url);
+    const dimensions = await getImageDimensions(buffer);
+    
+    if (dimensions) {
+      // Update the database record with dimensions
+      const updatedMetadata = {
+        ...imageData.metadata_,
+        width: dimensions.width,
+        height: dimensions.height
+      };
+      
+      await Image.update(
+        { metadata_: updatedMetadata },
+        { where: { id: imageData.id } }
+      );
+      
+      // Update the in-memory object
+      imageData.metadata_ = updatedMetadata;
+    }
+  } catch (error) {
+    console.warn(`Could not update dimensions for image ${imageData.id}:`, error);
+  }
 }

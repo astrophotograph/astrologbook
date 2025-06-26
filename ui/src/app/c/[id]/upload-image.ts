@@ -3,6 +3,7 @@
 import {Image} from '@/lib/database'
 import {fetchUser} from "@/lib/db"
 import {isOwner} from "@/lib/aaa"
+import {getImageDimensions} from "@/lib/utils"
 import {mkdir, writeFile} from 'fs/promises'
 import {join} from 'path'
 import crypto from 'crypto'
@@ -72,12 +73,16 @@ export async function uploadImage(formData: FormData, userId: string) {
     console.warn('Could not create public symlink, falling back to API serving:', error)
   }
 
+  // Get image dimensions
+  const dimensions = await getImageDimensions(buffer)
+  
   // Get image metadata
   const metadata = {
     originalName: file.name,
     size: file.size,
     type: file.type,
     uploadedAt: new Date().toISOString(),
+    ...(dimensions && { width: dimensions.width, height: dimensions.height })
   }
 
   // Save to database using Sequelize ORM
