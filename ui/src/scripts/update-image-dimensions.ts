@@ -6,7 +6,7 @@
  */
 
 import { Image } from '@/lib/database';
-import { getImageDimensions } from '@/lib/utils';
+import { getImageDimensions } from '@/lib/image-processing';
 import { readFile } from 'fs/promises';
 
 async function updateImageDimensions() {

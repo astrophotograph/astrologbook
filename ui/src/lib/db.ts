@@ -15,7 +15,7 @@ import ObjectTypeMap from "@/lib/objectTypeMap"
 // Add these new functions to db.ts
 import {z} from "zod"
 import {AstronomyObject} from "@/components/todo-list-types"
-import {getImageDimensions} from "@/lib/utils"
+import {getImageDimensions} from "@/lib/image-processing"
 import {readFile} from 'fs/promises'
 
 // Update the AstronomyTodoSchema to include the flagged field
@@ -447,4 +447,13 @@ export async function ensureImageDimensions(imageData: ImageType): Promise<void>
   } catch (error) {
     console.warn(`Could not update dimensions for image ${imageData.id}:`, error);
   }
+}
+
+export function getThumbnailUrl(imageData: ImageType, size: 500 | 1000): string | null {
+  const thumbnailPath = size === 500 ? imageData.metadata_?.thumb500 : imageData.metadata_?.thumb1000;
+  if (!thumbnailPath) return null;
+  
+  // Convert file path to URL path
+  const filename = thumbnailPath.split('/').pop();
+  return `/uploads/${imageData.user_id}/${filename}`;
 }

@@ -3,7 +3,7 @@
 import {Image} from '@/lib/database'
 import {fetchUser} from "@/lib/db"
 import {isOwner} from "@/lib/aaa"
-import {getImageDimensions} from "@/lib/utils"
+import {getImageDimensions, generateThumbnails} from "@/lib/image-processing"
 import {mkdir, writeFile} from 'fs/promises'
 import {join} from 'path'
 import crypto from 'crypto'
@@ -60,6 +60,8 @@ export async function uploadImage(formData: FormData, userId: string) {
     await mkdir(publicUserDir, { recursive: true })
     // Create symlink from public/uploads to actual uploads directory
     const { symlink, access } = await import('fs/promises')
+    
+    // Create symlink for main image
     const symlinkPath = join(publicUserDir, filename)
     const targetPath = join('../../../', filepath)
 
@@ -76,13 +78,45 @@ export async function uploadImage(formData: FormData, userId: string) {
   // Get image dimensions
   const dimensions = await getImageDimensions(buffer)
   
+  // Generate thumbnails
+  const thumbnails = await generateThumbnails(buffer, filename, userDir)
+  
+  // Create symlinks for thumbnails
+  try {
+    const { symlink, access } = await import('fs/promises')
+    
+    if (thumbnails.thumb500) {
+      const thumbSymlinkPath = join(publicUserDir, `${imageId}_thumb500.${extension}`)
+      const thumbTargetPath = join('../../../', thumbnails.thumb500)
+      try {
+        await access(thumbSymlinkPath)
+      } catch {
+        await symlink(thumbTargetPath, thumbSymlinkPath)
+      }
+    }
+    
+    if (thumbnails.thumb1000) {
+      const thumbSymlinkPath = join(publicUserDir, `${imageId}_thumb1000.${extension}`)
+      const thumbTargetPath = join('../../../', thumbnails.thumb1000)
+      try {
+        await access(thumbSymlinkPath)
+      } catch {
+        await symlink(thumbTargetPath, thumbSymlinkPath)
+      }
+    }
+  } catch (error) {
+    console.warn('Could not create thumbnail symlinks:', error)
+  }
+  
   // Get image metadata
   const metadata = {
     originalName: file.name,
     size: file.size,
     type: file.type,
     uploadedAt: new Date().toISOString(),
-    ...(dimensions && { width: dimensions.width, height: dimensions.height })
+    ...(dimensions && { width: dimensions.width, height: dimensions.height }),
+    ...(thumbnails.thumb500 && { thumb500: thumbnails.thumb500 }),
+    ...(thumbnails.thumb1000 && { thumb1000: thumbnails.thumb1000 })
   }
 
   // Save to database using Sequelize ORM

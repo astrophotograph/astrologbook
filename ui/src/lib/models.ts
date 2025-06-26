@@ -270,9 +270,19 @@ export const MessierNames = {
 //   }
 // }
 
-function getImageUrlDirect(url: string, id: string, user_id: string, size: string = '1000'): string {
+function getImageUrlDirect(url: string, id: string, user_id: string, size: string = '1000', metadata?: any): string {
   // If image has a local URL (uploaded file), serve from uploads path
   if (url && url.startsWith('uploads/')) {
+    // Check if we should use thumbnails for smaller sizes
+    if (metadata && size === '500' && metadata.thumb500) {
+      const filename = metadata.thumb500.split('/').pop();
+      return `/uploads/${user_id}/${filename}`;
+    }
+    if (metadata && (size === '1000' || size === 'medium') && metadata.thumb1000) {
+      const filename = metadata.thumb1000.split('/').pop();
+      return `/uploads/${user_id}/${filename}`;
+    }
+
     const relativePath = url.replace('uploads/', '')
     return `/uploads/${relativePath}`
   }
@@ -283,7 +293,7 @@ function getImageUrlDirect(url: string, id: string, user_id: string, size: strin
 }
 
 export const getImageUrl = (image: Image, size: string = '1000'): string => {
-  return getImageUrlDirect(image.url!, image.id!, image.user_id!, size)
+  return getImageUrlDirect(image.url!, image.id!, image.user_id!, size, image.metadata_)
 }
 
 
@@ -418,7 +428,7 @@ export const ImageSchema = z.object({
 }).transform(values => ({
   ...values,
   get image_url() {
-    return getImageUrlDirect(values.url!, values.id!, values.user_id!)
+    return getImageUrlDirect(values.url!, values.id!, values.user_id!, 'full', values.metadata_)
   },
   get normalized_annotations() {
     return []

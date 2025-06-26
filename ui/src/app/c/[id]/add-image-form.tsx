@@ -148,7 +148,7 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
                     onClick={() => setSelectedImageId(image.id!)}
                   >
                     <img
-                      src={getImageUrl(image)}
+                      src={getImageUrl(image, '500')}
                       alt={image.summary || 'Image'}
                       className="w-full h-32 object-cover"
                     />

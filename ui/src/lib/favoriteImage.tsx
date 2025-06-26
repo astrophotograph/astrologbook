@@ -50,7 +50,7 @@ export async function favoriteImage(collection_id: string) {
   // Determine the URL
   const imageUrl = !image
     ? '/ph/static/empty-collection.svg'
-    : getImageUrl(image as any)
+    : getImageUrl(image as any, '1000')
 
   // Store the URL in Redis for future requests
   // You can set an expiration time if needed (e.g., 3600 for 1 hour)

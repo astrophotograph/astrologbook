@@ -8,7 +8,7 @@ export function ImageThumbnail({image, checkCompleteImage}: { checkCompleteImage
         <div className="absolute left-0 bottom-0 z-50">{image.short_name}</div>
         {/*{% if image.id %}*/}
         <img className="object-cover absolute min-w-full min-h-full "
-             src={getImageUrl(image)}
+             src={getImageUrl(image, '500')}
              alt={image.summary || ''}/>
         {checkCompleteImage && (
           <div className="absolute right-0 bottom-0">

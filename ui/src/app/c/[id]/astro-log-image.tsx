@@ -10,7 +10,7 @@ export function AstroLogImage({image, index}: { index: number, image: Image }) {
         <Link href={`/i/${image.id}`}>
           <figure className="not-prose">
             <img className="object-contain max-w-64 max-h-64 aspect-auto rounded-xl mr-5 mb-5"
-                 src={getImageUrl(image)}
+                 src={getImageUrl(image, '1000')}
                  alt={image.summary || ''}/>
             <figcaption className={'text-sm text-center mt-1 text-wrap'}>{image.summary}</figcaption>
           </figure>
