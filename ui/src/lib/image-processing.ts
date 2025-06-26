@@ -65,8 +65,8 @@ export async function generateThumbnails(
   buffer: Buffer,
   filename: string,
   outputDir: string
-): Promise<{thumb500?: string, thumb1000?: string}> {
-  const thumbnails: {thumb500?: string, thumb1000?: string} = {};
+): Promise<{thumb500?: string, thumb1000?: string, placeholder?: string}> {
+  const thumbnails: {thumb500?: string, thumb1000?: string, placeholder?: string} = {};
 
   try {
     // Try to use sharp if available (NextJS compatible import)
@@ -113,6 +113,24 @@ export async function generateThumbnails(
         })
         .toFile(thumb1000Path);
       thumbnails.thumb1000 = thumb1000Path;
+    }
+
+    // Generate blur placeholder data URL (small 10px image)
+    try {
+      const placeholderBuffer = await image
+        .clone()
+        .resize(10, 10, {
+          fit: 'inside',
+          withoutEnlargement: false
+        })
+        .blur(1)
+        .jpeg({ quality: 20 })
+        .toBuffer();
+      
+      const placeholderDataUrl = `data:image/jpeg;base64,${placeholderBuffer.toString('base64')}`;
+      thumbnails.placeholder = placeholderDataUrl;
+    } catch (placeholderError) {
+      console.warn('Could not generate placeholder data URL:', placeholderError);
     }
 
     return thumbnails;

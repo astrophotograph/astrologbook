@@ -457,3 +457,7 @@ export function getThumbnailUrl(imageData: ImageType, size: 500 | 1000): string 
   const filename = thumbnailPath.split('/').pop();
   return `/uploads/${imageData.user_id}/${filename}`;
 }
+
+export function getPlaceholderDataUrl(imageData: ImageType): string | null {
+  return imageData.metadata_?.placeholder || null;
+}

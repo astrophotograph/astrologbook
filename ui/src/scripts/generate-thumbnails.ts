@@ -24,8 +24,8 @@ async function generateThumbnailsForExistingImages() {
     for (const image of images) {
       const metadata = image.metadata_ || {};
       
-      // Skip if thumbnails already exist
-      if (metadata.thumb500 || metadata.thumb1000) {
+      // Skip if thumbnails and placeholder already exist
+      if ((metadata.thumb500 || metadata.thumb1000) && metadata.placeholder) {
         skippedCount++;
         continue;
       }
@@ -41,12 +41,13 @@ async function generateThumbnailsForExistingImages() {
         // Generate thumbnails
         const thumbnails = await generateThumbnails(buffer, originalFilename, imageDir);
         
-        if (thumbnails.thumb500 || thumbnails.thumb1000) {
-          // Update metadata with thumbnail paths
+        if (thumbnails.thumb500 || thumbnails.thumb1000 || thumbnails.placeholder) {
+          // Update metadata with thumbnail paths and placeholder
           const updatedMetadata = {
             ...metadata,
             ...(thumbnails.thumb500 && { thumb500: thumbnails.thumb500 }),
-            ...(thumbnails.thumb1000 && { thumb1000: thumbnails.thumb1000 })
+            ...(thumbnails.thumb1000 && { thumb1000: thumbnails.thumb1000 }),
+            ...(thumbnails.placeholder && { placeholder: thumbnails.placeholder })
           };
           
           await image.update({ metadata_: updatedMetadata });
@@ -54,6 +55,7 @@ async function generateThumbnailsForExistingImages() {
           console.log(`✓ Generated thumbnails for ${image.filename}`);
           if (thumbnails.thumb500) console.log(`  - 500px: ${thumbnails.thumb500}`);
           if (thumbnails.thumb1000) console.log(`  - 1000px: ${thumbnails.thumb1000}`);
+          if (thumbnails.placeholder) console.log(`  - Placeholder: ${thumbnails.placeholder.substring(0, 50)}...`);
           
           updatedCount++;
         } else {

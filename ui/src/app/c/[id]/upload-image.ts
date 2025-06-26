@@ -116,7 +116,8 @@ export async function uploadImage(formData: FormData, userId: string) {
     uploadedAt: new Date().toISOString(),
     ...(dimensions && { width: dimensions.width, height: dimensions.height }),
     ...(thumbnails.thumb500 && { thumb500: thumbnails.thumb500 }),
-    ...(thumbnails.thumb1000 && { thumb1000: thumbnails.thumb1000 })
+    ...(thumbnails.thumb1000 && { thumb1000: thumbnails.thumb1000 }),
+    ...(thumbnails.placeholder && { placeholder: thumbnails.placeholder })
   }
 
   // Save to database using Sequelize ORM

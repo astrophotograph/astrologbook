@@ -9,7 +9,8 @@
     "lint": "next lint",
     "update-image-dimensions": "tsx src/scripts/update-image-dimensions.ts",
     "generate-thumbnails": "tsx src/scripts/generate-thumbnails.ts",
-    "scripts:help": "echo 'Available scripts:\\n  update-image-dimensions - Add width/height to existing images\\n  generate-thumbnails - Generate thumbnails for existing images'"
+    "generate-placeholders": "tsx src/scripts/generate-placeholders.ts",
+    "scripts:help": "echo 'Available scripts:\\n  update-image-dimensions - Add width/height to existing images\\n  generate-thumbnails - Generate thumbnails for existing images\\n  generate-placeholders - Generate blur placeholder data URLs for existing images'"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
