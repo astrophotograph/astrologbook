@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ['astroroot.vercel.app', 'photohosting.vercel.app', 'astrophotography.tv', 'www.astrophotography.tv'],
+      bodySizeLimit: '10mb',
     },
   },
   async rewrites() {

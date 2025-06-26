@@ -4,5 +4,7 @@ ignoredBuiltDependencies:
 onlyBuiltDependencies:
   - '@clerk/shared'
   - '@tailwindcss/oxide'
+  - '@webassembly/sharp'
+  - esbuild
   - sharp
   - sqlite3
