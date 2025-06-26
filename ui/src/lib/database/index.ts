@@ -16,6 +16,7 @@ export * from './models/AstronomyTodo';
 export * from './models/AstroObject';
 export * from './models/Collection';
 export * from './models/Image';
+export * from './models/ObservationSchedule';
 
 // Create default user for SQLite
 const createDefaultUser = async (): Promise<string | null> => {

@@ -65,7 +65,6 @@ export function calculateAltitudeAtTime(
 
   // Get the observer's location in radians
   const latRad = coordinates.latitude * Math.PI / 180;
-  const lonRad = coordinates.longitude * Math.PI / 180;
 
   // Calculate Local Sidereal Time (LST)
   const jd = time.getTime() / 86400000 + 2440587.5; // Julian date
