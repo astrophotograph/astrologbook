@@ -4,7 +4,7 @@ import { getDatabaseConfig, createSequelizeOptions } from './config';
 // Initialize Sequelize
 const config = getDatabaseConfig();
 const options = createSequelizeOptions(config);
-console.log('Database options:', options);
+// console.log('Database options:', options);
 
 export const sequelize = new Sequelize(options);
 

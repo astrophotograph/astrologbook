@@ -19,7 +19,7 @@ export interface DatabaseConfig {
 
 // Get database configuration based on environment
 export const getDatabaseConfig = (): DatabaseConfig => {
-  console.log('DATABASE_TYPE:', process.env.DATABASE_TYPE)
+  // console.log('DATABASE_TYPE:', process.env.DATABASE_TYPE)
   const dbType = process.env.DATABASE_TYPE as 'postgres' | 'sqlite' || 'postgres';
 
   if (dbType === 'postgres') {
@@ -39,7 +39,7 @@ export const getDatabaseConfig = (): DatabaseConfig => {
       database: url.pathname.slice(1),
       username: url.username,
       password: url.password,
-      logging: process.env.NODE_ENV === 'development' ? console.log : false,
+      logging: false,
       pool: {
         max: 10,
         min: 0,
@@ -53,7 +53,7 @@ export const getDatabaseConfig = (): DatabaseConfig => {
   return {
     dialect: 'sqlite',
     storage: process.env.DATABASE_PATH || './database.sqlite',
-    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    logging: false,
     pool: {
       max: 1,
       min: 0,

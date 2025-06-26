@@ -85,7 +85,7 @@ export const initializeDatabase = async (): Promise<void> => {
 
     // Sync models in development
     if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
+      await sequelize.sync();
       console.log('Database models synchronized.');
     }
 
