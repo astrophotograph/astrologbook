@@ -1,5 +1,11 @@
-import {neon} from "@neondatabase/serverless"
 import {Redis} from '@upstash/redis'
+import { sequelize } from '@/lib/database'
+
+interface ImageResult {
+  id: string;
+  user_id: string;
+  favorite: boolean;
+}
 
 // Initialize Redis
 const redis = new Redis({
@@ -16,16 +22,20 @@ export async function favoriteImage(collection_id: string) {
     return cachedUrl
   }
 
-  // If not in Redis, compute the URL
-  const sql = neon(`${process.env.DATABASE_URL}`)
-  const results = await sql`SELECT *
-                            FROM collectionimage
-                                     JOIN image ON collectionimage.image_id = image.id
-                            WHERE collectionimage.collection_id = ${collection_id}
-  `
-  let image = null
+  // If not in Redis, compute the URL using Sequelize for cross-database compatibility
+  const results = await sequelize.query(
+    `SELECT i.*
+     FROM collectionimage ci
+     JOIN images i ON ci.image_id = i.id
+     WHERE ci.collection_id = :collection_id`,
+    {
+      replacements: { collection_id },
+      type: sequelize.QueryTypes.SELECT,
+    }
+  ) as ImageResult[]
+  let image: ImageResult | null = null
 
-  const favorites = results.filter(item => item.favorite)
+  const favorites = results.filter((item: ImageResult) => item.favorite)
 
   if (favorites.length > 0) {
     image = favorites[0]
