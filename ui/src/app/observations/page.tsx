@@ -2,16 +2,43 @@ import {fetchAstroObservations, fetchUser} from "@/lib/db"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
 import {enrichCollections} from "@/components/enrichCollections"
 import {ObservationLogCard} from "@/components/observation-log-card"
+import {shouldUseSQLiteAutoLoginServer} from "@/lib/auth/server"
+import {getDefaultUserId} from "@/lib/database"
+import {currentUser} from "@clerk/nextjs/server"
+import {redirect} from "next/navigation"
 
+export default async function AstroLogPage() {
+  let user
 
-export default async function AstroLogPage({
-                                             params,
-                                           }: {
-  params: Promise<{ id: string }>
-}) {
-  const {id} = await params
-  const user = await fetchUser(id)
-  const initialCollections = await fetchAstroObservations(id)
+  if (shouldUseSQLiteAutoLoginServer()) {
+    // SQLite mode: use default user
+    const defaultUserId = await getDefaultUserId()
+    if (!defaultUserId) {
+      throw new Error('No default user found in SQLite database')
+    }
+    user = await fetchUser(defaultUserId)
+  } else {
+    // Non-SQLite mode: use Clerk authentication
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      redirect('/sign-in')
+    }
+
+    // Use the Clerk user ID or map it to your user system
+    user = await fetchUser(clerkUser.id)
+
+    // If user doesn't exist in your database, you might want to create them
+    if (!user) {
+      // Handle user creation or redirect to setup
+      throw new Error('User not found in database')
+    }
+  }
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  const initialCollections = await fetchAstroObservations(user.id)
   const rawCollections = await enrichCollections(initialCollections)
   const collections = rawCollections.filter((item) => !item.favorite)
 
@@ -26,7 +53,7 @@ export default async function AstroLogPage({
 
   return (
     <main className="container mx-auto py-8 flex-grow relative">
-      <DefaultBreadcrumb user={user!} pageName={'Astro Log'}/>
+      <DefaultBreadcrumb user={user} pageName={'Astro Log'}/>
       <h3 className="text-2xl font-semibold my-6">Observation Log</h3>
       <p className={''}>
         Daily observation logs. Photos and some commentary. Most of these include just

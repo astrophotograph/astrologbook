@@ -208,6 +208,7 @@ export async function syncAstronomyTodoItems(
 
 export async function fetchUser(id: string): Promise<UserType | null> {
   const user = await User.findByPk(id);
+  console.log('User:', user?.toJSON(), { id });
   return user ? user.toJSON() as UserType : null;
 }
 
