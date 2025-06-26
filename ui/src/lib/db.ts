@@ -461,3 +461,33 @@ export function getThumbnailUrl(imageData: ImageType, size: 500 | 1000): string 
 export function getPlaceholderDataUrl(imageData: ImageType): string | null {
   return imageData.metadata_?.placeholder || null;
 }
+
+export async function fetchRecentTagsByUser(userId: string, limit: number = 20): Promise<string[]> {
+  try {
+    // Get all collections for the user that have tags
+    const collections = await Collection.findAll({
+      where: { 
+        user_id: userId,
+        tags: { [Op.ne]: null }
+      },
+      attributes: ['tags'],
+      order: [['updated_at', 'DESC']],
+      limit: 100 // Get recent collections
+    });
+
+    // Extract and flatten all tags
+    const allTags = new Set<string>();
+    collections.forEach(collection => {
+      if (collection.tags) {
+        const tags = collection.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        tags.forEach(tag => allTags.add(tag));
+      }
+    });
+
+    // Return unique tags as array, limited to specified count
+    return Array.from(allTags).slice(0, limit);
+  } catch (error) {
+    console.warn('Could not fetch recent tags:', error);
+    return [];
+  }
+}

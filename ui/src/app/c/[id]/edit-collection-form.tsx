@@ -24,6 +24,7 @@ import {useState} from "react"
 import {saveCollection} from "@/app/c/[id]/save-collection"
 import {formSchema} from "@/app/c/[id]/collection-edit-type"
 import {useRouter} from "next/navigation"
+import {TagSelector} from "@/components/tag-selector"
 
 
 export function EditCollectionForm({collection}: { collection: Collection }) {
@@ -36,9 +37,10 @@ export function EditCollectionForm({collection}: { collection: Collection }) {
       id: collection.id, // todo : make sure this can't be modified from client!
       name: collection.name,
       description: collection.description,
-      tags: collection.tags,
-      video: collection.metadata_?.video,
+      tags: collection.tags || '',
+      video: collection.metadata_?.video || '',
       session_date: collection.metadata_?.session_date || '',
+      favorite: collection.favorite || false,
     },
   })
 
@@ -103,11 +105,14 @@ export function EditCollectionForm({collection}: { collection: Collection }) {
                            <FormItem>
                              <FormLabel>Tags</FormLabel>
                              <FormControl>
-                               {/* @ts-ignore */}
-                               <Input {...field}/>
+                               <TagSelector 
+                                 userId={collection.user_id!}
+                                 value={field.value || ''}
+                                 onChange={field.onChange}
+                               />
                              </FormControl>
                              <FormDescription>
-                               Enter a comma-delimited list of tags.
+                               Add tags to organize your collection. Select from recent tags or type new ones.
                              </FormDescription>
                            </FormItem>
                          )}
