@@ -1,10 +1,10 @@
 'use server'
 
-import {neon} from '@neondatabase/serverless'
 import {z} from "zod"
 import {formSchema} from "@/app/c/[id]/collection-edit-type"
 import {fetchCollection, fetchUser} from "@/lib/db"
 import {isOwner} from "@/lib/aaa"
+import {Collection} from "@/lib/database/models/Collection"
 
 export async function saveCollection(values: z.infer<typeof formSchema>) {
   const collection = await fetchCollection(values.id)
@@ -13,12 +13,23 @@ export async function saveCollection(values: z.infer<typeof formSchema>) {
     return
   }
 
-  // Connect to the Neon database
-  const sql = neon(`${process.env.DATABASE_URL}`)
+  // Prepare metadata with existing values plus new session_date
+  const existingMetadata = collection!.metadata_ || {}
+  const updatedMetadata = {
+    ...existingMetadata,
+    ...(values.session_date && { session_date: values.session_date }),
+  }
 
-  await sql`UPDATE collection 
-               SET name = ${values.name},
-                   description = ${values.description},
-                   tags = ${values.tags}
-             WHERE id = ${values.id}`
+  // Use Sequelize ORM for database compatibility (supports both SQLite and PostgreSQL)
+  await Collection.update(
+    {
+      name: values.name,
+      description: values.description,
+      tags: values.tags,
+      metadata_: updatedMetadata, // Sequelize model handles JSON serialization
+    },
+    {
+      where: { id: values.id }
+    }
+  )
 }

@@ -1,33 +1,40 @@
 import {clerkMiddleware} from '@clerk/nextjs/server'
-import { NextResponse} from "next/server"
+import { NextResponse, NextRequest} from "next/server"
+import { getDatabaseConfig } from '@/lib/database/config'
 
-// https://github.com/vercel/next.js/discussions/62050.  Ugh!
+// Check if we're in SQLite mode
+function isSQLiteMode(): boolean {
+  try {
+    const config = getDatabaseConfig();
+    return config.dialect === 'sqlite';
+  } catch (error) {
+    console.error('Error checking SQLite mode in middleware:', error);
+    return false;
+  }
+}
 
-// type NextApiHandler = (req: NextRequest, res: NextApiResponse) => Promise<void>;
-
-// const actionHeaderCheckOverride = async (
-//   req: NextRequest,
-//   // res: NextApiResponse,
-//   // next: NextApiHandler,
-// ): Promise<any> => {
-//   const newForward = req.headers.get("origin")?.replace(/(http|https):\/\//, "") || "*"
-//   // console.debug("REQUEST HEADERS:::: ", req.headers)
-//   // console.debug("NEW FORWARD:::: ", newForward)
-//
-//
-//   const response = NextResponse.next()
-//   response.headers.set("x-forwarded-host", newForward)
-//   return response
-// }
-
-export default clerkMiddleware(async (auth, req) => {
+// Custom middleware that bypasses Clerk in SQLite mode
+async function customMiddleware(req: NextRequest) {
   const newForward = req.headers.get("origin")?.replace(/(http|https):\/\//, "") || "*"
   const response = NextResponse.next()
-
   response.headers.set("x-forwarded-host", newForward)
   return response
+}
 
-})
+export default function middleware(req: NextRequest) {
+  // In SQLite mode, completely bypass Clerk middleware
+  if (isSQLiteMode()) {
+    return customMiddleware(req);
+  }
+  
+  // In non-SQLite mode, use Clerk middleware
+  return clerkMiddleware(async (auth, req) => {
+    const newForward = req.headers.get("origin")?.replace(/(http|https):\/\//, "") || "*"
+    const response = NextResponse.next()
+    response.headers.set("x-forwarded-host", newForward)
+    return response
+  })(req);
+}
 
 // export default async function middleware(req: NextRequest) {
 //   const newForward = req.headers.get("origin")?.replace(/(http|https):\/\//, "") || "*"

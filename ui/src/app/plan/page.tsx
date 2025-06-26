@@ -14,8 +14,7 @@ import { Telescope, Search, Calendar, Plus, Clock, Trash2, Info } from "lucide-r
 import { toast } from "sonner";
 import { AstroObject, User } from "@/lib/models";
 import { DefaultBreadcrumb } from "@/components/default-breadcrumb";
-import { useUser } from "@clerk/nextjs";
-import { useAuthMode } from "@/hooks/useAuthMode";
+import { useConditionalAuth } from "@/hooks/useConditionalAuth";
 
 interface PlanningItem {
   id: string;
@@ -38,7 +37,8 @@ export default function PlanPage() {
   const [showAltitudeDialog, setShowAltitudeDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { user: clerkUser } = useUser();
+  const { user: clerkUser } = useConditionalAuth();
+  
   const user: User | null = clerkUser ? {
     id: clerkUser.id,
     username: clerkUser.username || '',
@@ -50,8 +50,6 @@ export default function PlanPage() {
     metadata_: {},
     email: clerkUser.primaryEmailAddress?.emailAddress || '',
   } : null;
-
-  const { isSQLite } = useAuthMode();
 
   const loadAstroObjects = async (query: string) => {
     if (!query) {
@@ -140,7 +138,7 @@ export default function PlanPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <DefaultBreadcrumb user={isSQLite ? undefined : user!} pageName="Plan" />
+      <DefaultBreadcrumb user={clerkUser ? user! : undefined} pageName="Plan" />
       <div className="flex items-center gap-3 mb-8">
         <Telescope className="w-8 h-8 text-blue-400" />
         <h1 className="text-3xl font-bold">Astronomy Planning</h1>

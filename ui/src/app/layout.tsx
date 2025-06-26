@@ -6,6 +6,7 @@ import {ThemeProvider} from "@/components/theme-provider"
 import {ClerkProvider} from '@clerk/nextjs'
 import { Toaster } from "@/components/ui/sonner"
 import { ensureDatabaseInitialized } from '@/lib/database/init';
+import { isSQLiteModeServer } from '@/lib/auth/server';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,13 +34,26 @@ export const metadata: Metadata = {
   description: "Astronomy Observation Log.",
 };
 
+// Conditional auth wrapper component
+function AuthWrapper({ children }: { children: React.ReactNode }) {
+  const isSQLiteMode = isSQLiteModeServer();
+  
+  // In SQLite mode, completely disable Clerk widgets
+  if (isSQLiteMode) {
+    return <>{children}</>;
+  }
+  
+  // In non-SQLite mode, use Clerk provider
+  return <ClerkProvider>{children}</ClerkProvider>;
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <AuthWrapper>
       <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="UTF-8"/>
@@ -70,6 +84,6 @@ export default function RootLayout({
       </ThemeProvider>
       </body>
       </html>
-    </ClerkProvider>
+    </AuthWrapper>
   );
 }

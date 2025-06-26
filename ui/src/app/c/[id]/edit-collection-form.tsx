@@ -37,6 +37,7 @@ export function EditCollectionForm({collection}: { collection: Collection }) {
       description: collection.description,
       tags: collection.tags,
       video: collection.metadata_?.video,
+      session_date: collection.metadata_?.session_date || '',
     },
   })
 
@@ -106,6 +107,20 @@ export function EditCollectionForm({collection}: { collection: Collection }) {
                              </FormControl>
                              <FormDescription>
                                Enter a comma-delimited list of tags.
+                             </FormDescription>
+                           </FormItem>
+                         )}
+              />
+              <FormField control={form.control}
+                         name={'session_date'}
+                         render={({field}) => (
+                           <FormItem>
+                             <FormLabel>Session Date</FormLabel>
+                             <FormControl>
+                               <Input type="date" {...field}/>
+                             </FormControl>
+                             <FormDescription>
+                               Date of your observation session
                              </FormDescription>
                            </FormItem>
                          )}

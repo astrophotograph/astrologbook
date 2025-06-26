@@ -13,4 +13,5 @@ export const formSchema = z.object({
   // metadata: z.record(z.any()).default({}),
   // Metadata fields
   video: z.string().optional(),
+  session_date: z.string().optional(),
 })

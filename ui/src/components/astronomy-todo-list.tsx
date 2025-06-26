@@ -23,22 +23,15 @@ import {ObjectListHeader} from "@/components/object-list-header"
 import {ObjectListItem} from "@/components/object-list-item"
 import {TypeFilter} from "@/components/type-filter"
 import {EmptyState} from "@/components/empty-state"
-import {useAuth} from "@clerk/nextjs"
 import {SyncStatus} from "@/components/sync-status"
 import {DataManagementDropdown} from "@/components/data-management-dropdown"
 import {ImportDialog} from "@/components/import-dialog"
 import {useDataSync} from "@/components/use-data-sync"
-import { useAuthMode } from "@/hooks/useAuthMode"
+import { useConditionalAuth } from "@/hooks/useConditionalAuth"
 
 // Main Component
 export function AstronomyTodoList() {
-  const { userId, isLoaded, isSignedIn } = useAuth();
-  const { isSQLite, isLoading: authModeLoading } = useAuthMode();
-
-  // For SQLite, we simulate being signed in with a default user
-  const effectiveUserId = isSQLite ? 'sqlite-default-user' : userId;
-  const effectiveIsSignedIn = isSQLite ? true : isSignedIn;
-  const effectiveIsLoaded = isSQLite ? !authModeLoading : isLoaded;
+  const { effectiveUserId, effectiveIsSignedIn, effectiveIsLoaded } = useConditionalAuth();
   const [objectName, setObjectName] = useState("");
   const [notes, setNotes] = useState("");
   const [isLookupLoading, setIsLookupLoading] = useState(false);
