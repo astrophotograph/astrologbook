@@ -176,16 +176,36 @@ export const restoreSQLiteDatabase = async (backupFilePath: string): Promise<voi
   }
 };
 
-// List available backups
-export const listBackups = async (): Promise<string[]> => {
+// List available backups with metadata
+export const listBackups = async (): Promise<Array<{name: string, size: number, created: string}>> => {
   const backupConfig = getBackupConfig();
   
   try {
     const files = await fs.readdir(backupConfig.backupPath);
-    return files
-      .filter(file => file.endsWith('.sqlite'))
-      .sort()
-      .reverse(); // Most recent first
+    const backupFiles = await Promise.all(
+      files
+        .filter(file => file.endsWith('.sqlite'))
+        .map(async (file) => {
+          try {
+            const filePath = path.join(backupConfig.backupPath, file);
+            const stats = await fs.stat(filePath);
+            return {
+              name: file,
+              size: stats.size,
+              created: stats.birthtime.toISOString()
+            };
+          } catch (error) {
+            console.error(`Failed to get stats for ${file}:`, error);
+            return {
+              name: file,
+              size: 0,
+              created: new Date().toISOString()
+            };
+          }
+        })
+    );
+    
+    return backupFiles.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
   } catch (error) {
     console.error('Failed to list backups:', error);
     return [];

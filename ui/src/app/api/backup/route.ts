@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     switch (action) {
       case 'list':
         const backups = await listBackups();
-        return NextResponse.json({ backups });
+        return NextResponse.json({ files: backups });
 
       case 'status':
         const status = getBackupStatus();
