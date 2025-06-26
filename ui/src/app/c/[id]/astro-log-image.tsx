@@ -1,4 +1,4 @@
-import {Image, getImageUrl} from "@/lib/models"
+import {getImageUrl, Image} from "@/lib/models"
 import Link from "next/link"
 
 export function AstroLogImage({image, index}: { index: number, image: Image }) {

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Cloud, Droplets, Eye, Wind, MapPin, RefreshCw, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import {useEffect, useState} from "react"
+import {Badge} from "@/components/ui/badge"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Cloud, Droplets, Eye, MapPin, RefreshCw, Wind} from "lucide-react"
+import {Button} from "@/components/ui/button"
 
 interface WeatherData {
   condition: string;

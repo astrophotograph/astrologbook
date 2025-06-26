@@ -4,7 +4,7 @@ import {nanoid} from 'nanoid'
 import {fetchUser} from "@/lib/db"
 import {isOwner} from "@/lib/aaa"
 import {shouldUseSQLiteAutoLoginServer} from "@/lib/auth/server"
-import {getDefaultUserId, Collection} from "@/lib/database"
+import {Collection, getDefaultUserId} from "@/lib/database"
 import {currentUser} from "@clerk/nextjs/server"
 
 export interface CreateCollectionInput {
@@ -19,7 +19,7 @@ export interface CreateCollectionInput {
 export async function createCollection(input: CreateCollectionInput) {
   // Get authenticated user
   let user
-  
+
   if (shouldUseSQLiteAutoLoginServer()) {
     const defaultUserId = await getDefaultUserId()
     if (!defaultUserId) {

@@ -1,7 +1,7 @@
 import {User} from "./models"
 import {auth} from "@clerk/nextjs/server"
 import {fetchImage, fetchUser} from "@/lib/db"
-import { shouldUseSQLiteAutoLoginServer } from '@/lib/auth/server'
+import {shouldUseSQLiteAutoLoginServer} from '@/lib/auth/server'
 
 export async function isOwner(user: User) {
   // In SQLite mode, always return true (single user system)

@@ -1,7 +1,7 @@
 import Link from "next/link"
-import { isSQLiteModeServer } from "@/lib/auth/server"
-import { HeaderClient } from "@/components/header-client"
-import { GlobalSearch } from "@/components/search/global-search"
+import {isSQLiteModeServer} from "@/lib/auth/server"
+import {HeaderClient} from "@/components/header-client"
+import {GlobalSearch} from "@/components/search/global-search"
 
 export function Header() {
   const isSQLite = isSQLiteModeServer();

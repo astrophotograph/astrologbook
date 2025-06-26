@@ -1,9 +1,9 @@
 // Define all model associations here to avoid circular dependencies
-import { User } from './models/User';
-import { AstronomyTodo } from './models/AstronomyTodo';
-import { AstroObject } from './models/AstroObject';
-import { Collection } from './models/Collection';
-import { Image } from './models/Image';
+import {User} from './models/User'
+import {AstronomyTodo} from './models/AstronomyTodo'
+import {AstroObject} from './models/AstroObject'
+import {Collection} from './models/Collection'
+import {Image} from './models/Image'
 
 // Ensure all models are loaded before setting up associations
 console.log('Loading models:', { User, AstronomyTodo, AstroObject, Collection, Image });

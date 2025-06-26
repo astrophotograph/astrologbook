@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AltitudeChart } from "@/components/altitude-chart";
+import {useEffect, useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
+import {AltitudeChart} from "@/components/altitude-chart"
 import {
-  parseCoordinates,
+  AltitudePoint,
   calculateCurrentAltitude,
+  defaultCoordinates,
+  formatTime,
   generateNightAltitudeData,
   getIdealObservationTimeRange,
-  formatTime,
-  defaultCoordinates,
-  AltitudePoint
-} from "@/lib/astronomy-utils";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+  parseCoordinates,
+} from "@/lib/astronomy-utils"
+import {Label} from "@/components/ui/label"
+import {Input} from "@/components/ui/input"
+import {toast} from "sonner"
 
 interface ObjectAltitudeDialogProps {
   open: boolean;

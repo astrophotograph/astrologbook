@@ -1,7 +1,7 @@
 'use server'
 
 import {Collection, Image} from '@/lib/database'
-import {fetchCollection, fetchUser, fetchImage} from "@/lib/db"
+import {fetchCollection, fetchImage, fetchUser} from "@/lib/db"
 import {isOwner} from "@/lib/aaa"
 
 export async function addImageToCollection(collectionId: string, imageId: string) {
@@ -23,7 +23,7 @@ export async function addImageToCollection(collectionId: string, imageId: string
   // Use Sequelize many-to-many association to add image to collection
   const collectionModel = await Collection.findByPk(collectionId)
   const imageModel = await Image.findByPk(imageId)
-  
+
   if (!collectionModel) {
     throw new Error('Collection not found in database')
   }

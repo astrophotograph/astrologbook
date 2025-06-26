@@ -1,6 +1,6 @@
 'use client'
 
-import {Collection, User, Image, getImageUrl} from "@/lib/models"
+import {Collection, getImageUrl, Image, User} from "@/lib/models"
 import {
   Dialog,
   DialogClose,
@@ -8,15 +8,16 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle, DialogTrigger,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import {Button} from "@/components/ui/button"
-import {useState, useEffect} from "react"
+import {useEffect, useState} from "react"
 import {addImageToCollection} from "@/app/c/[id]/add-image-to-collection"
 import {uploadImage} from "@/app/c/[id]/upload-image"
 import {useRouter} from "next/navigation"
 import {getUserImages} from "@/app/c/[id]/get-user-images"
-import {Plus, Upload} from "lucide-react"
+import {Plus} from "lucide-react"
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
 import {Input} from "@/components/ui/input"
 import {Textarea} from "@/components/ui/textarea"
@@ -57,7 +58,7 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
 
   const handleAddImage = async () => {
     if (!selectedImageId) return
-    
+
     setLoading(true)
     try {
       await addImageToCollection(collection.id!, selectedImageId)
@@ -73,17 +74,17 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
 
   const handleFileUpload = async () => {
     if (!selectedFile) return
-    
+
     setLoading(true)
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('summary', uploadForm.summary || selectedFile.name)
       formData.append('description', uploadForm.description)
-      
+
       const uploadedImage = await uploadImage(formData, user.id!)
       await addImageToCollection(collection.id!, uploadedImage.id)
-      
+
       setOpen(false)
       setSelectedFile(null)
       setUploadForm({ summary: '', description: '' })
@@ -122,13 +123,13 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
             Upload a new image or select from your existing library.
           </DialogDescription>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="library">Library</TabsTrigger>
             <TabsTrigger value="upload">Upload</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="library" className="mt-4 max-h-[400px] overflow-y-auto">
             {images.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
@@ -169,7 +170,7 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="upload" className="mt-4 space-y-4">
             <div className="space-y-4">
               <div>
@@ -187,7 +188,7 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
                   </p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="summary">Title</Label>
                 <Input
@@ -198,7 +199,7 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -219,15 +220,15 @@ export function AddImageForm({collection, user}: AddImageFormProps) {
             <Button variant="secondary">Cancel</Button>
           </DialogClose>
           {activeTab === 'library' ? (
-            <Button 
-              onClick={handleAddImage} 
+            <Button
+              onClick={handleAddImage}
               disabled={!selectedImageId || loading}
             >
               {loading ? 'Adding...' : 'Add Image'}
             </Button>
           ) : (
-            <Button 
-              onClick={handleFileUpload} 
+            <Button
+              onClick={handleFileUpload}
               disabled={!selectedFile || loading}
             >
               {loading ? 'Uploading...' : 'Upload & Add'}

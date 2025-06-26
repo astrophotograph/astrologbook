@@ -1,4 +1,4 @@
-import {Image, getImageUrl} from "@/lib/models"
+import {getImageUrl, Image} from "@/lib/models"
 
 export function ImageThumbnail({image, checkCompleteImage}: { checkCompleteImage: boolean, image: Image }) {
   return (

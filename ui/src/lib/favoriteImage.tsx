@@ -1,6 +1,6 @@
 import {Redis} from '@upstash/redis'
-import { sequelize } from '@/lib/database'
-import { getImageUrl } from '@/lib/models'
+import {sequelize} from '@/lib/database'
+import {getImageUrl} from '@/lib/models'
 
 interface ImageResult {
   id: string;

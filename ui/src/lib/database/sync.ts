@@ -1,4 +1,4 @@
-import { sequelize } from './index';
+import {sequelize} from './index'
 
 /**
  * Initialize and sync database

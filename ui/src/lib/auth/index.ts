@@ -1,8 +1,8 @@
-import { auth } from '@clerk/nextjs/server';
-import { getSQLiteAutoLoginUserId, shouldUseSQLiteAutoLogin } from './sqlite';
-import { User } from '@/lib/database';
-import { fetchUserFromClerkUser } from '@/lib/db';
-import { shouldUseSQLiteAutoLoginServer } from './server';
+import {auth} from '@clerk/nextjs/server'
+import {getSQLiteAutoLoginUserId} from './sqlite'
+import {User} from '@/lib/database'
+import {fetchUserFromClerkUser} from '@/lib/db'
+import {shouldUseSQLiteAutoLoginServer} from './server'
 
 export interface AuthResult {
   userId: string | null;

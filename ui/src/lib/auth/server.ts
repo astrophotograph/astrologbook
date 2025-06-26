@@ -1,4 +1,4 @@
-import { getDatabaseConfig } from '@/lib/database/config';
+import {getDatabaseConfig} from '@/lib/database/config'
 
 /**
  * Server-side function to check if we're in SQLite mode

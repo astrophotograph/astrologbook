@@ -1,6 +1,6 @@
-import { DataTypes, Model, Optional } from 'sequelize';
-import { sequelize } from '../connection';
-import { User } from './User';
+import {DataTypes, Model, Optional} from 'sequelize'
+import {sequelize} from '../connection'
+import {User} from './User'
 
 export interface ImageAttributes {
   id: string;

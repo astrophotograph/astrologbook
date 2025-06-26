@@ -1,7 +1,7 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { useAuthMode } from "@/hooks/useAuthMode";
+import {SignedIn, SignedOut, SignInButton, SignUpButton, UserButton} from "@clerk/nextjs"
+import {useAuthMode} from "@/hooks/useAuthMode"
 
 interface HeaderClientProps {
   initialIsSQLite: boolean;

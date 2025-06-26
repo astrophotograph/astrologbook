@@ -1,10 +1,10 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Info, Search } from "lucide-react"
-import { useMemo } from "react"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Input} from "@/components/ui/input"
+import {Info, Search} from "lucide-react"
+import {useMemo} from "react"
 import {getObjectTypeIcon} from "@/lib/astronomy-utils"
 
 export function TargetSearch() {

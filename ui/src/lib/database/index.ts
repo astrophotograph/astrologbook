@@ -1,5 +1,12 @@
 // Import sequelize connection
-import { sequelize } from './connection';
+import {sequelize} from './connection'
+// Import associations after all models are defined
+import './associations'
+import {initializeAssociations} from './associations'
+import {initializeSQLite} from './hooks'
+import {User} from './models/User'
+import {getDatabaseConfig} from './config'
+
 export { sequelize, withTransaction, getSequelize, Op, Transaction, QueryTypes } from './connection';
 
 // Import all models to register them
@@ -8,13 +15,6 @@ export * from './models/AstronomyTodo';
 export * from './models/AstroObject';
 export * from './models/Collection';
 export * from './models/Image';
-
-// Import associations after all models are defined
-import './associations';
-import { initializeAssociations } from './associations';
-import { initializeSQLite } from './hooks';
-import { User } from './models/User';
-import { getDatabaseConfig } from './config';
 
 // Create default user for SQLite
 const createDefaultUser = async (): Promise<string | null> => {

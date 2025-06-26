@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import * as d3 from "d3";
-import { AltitudePoint } from "@/lib/astronomy-utils";
+import {useEffect, useRef} from "react"
+import * as d3 from "d3"
+import {AltitudePoint} from "@/lib/astronomy-utils"
 
 interface AltitudeChartProps {
   data: AltitudePoint[];

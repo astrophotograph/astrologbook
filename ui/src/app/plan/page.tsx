@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WeatherConditions } from "@/components/WeatherConditions";
-import { MoonPhase } from "@/components/MoonPhase";
-import { ObjectAltitudeDialog } from "@/components/object-altitude-dialog";
-import { StarMap } from "@/components/StarMap";
-import { Telescope, Search, Calendar, Plus, Clock, Trash2, Info } from "lucide-react";
-import { toast } from "sonner";
-import { AstroObject, User } from "@/lib/models";
-import { DefaultBreadcrumb } from "@/components/default-breadcrumb";
-import { useConditionalAuth } from "@/hooks/useConditionalAuth";
+import {useState} from "react"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
+import {WeatherConditions} from "@/components/WeatherConditions"
+import {MoonPhase} from "@/components/MoonPhase"
+import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
+import {StarMap} from "@/components/StarMap"
+import {Calendar, Clock, Info, Plus, Search, Telescope, Trash2} from "lucide-react"
+import {toast} from "sonner"
+import {AstroObject, User} from "@/lib/models"
+import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
+import {useConditionalAuth} from "@/hooks/useConditionalAuth"
 
 interface PlanningItem {
   id: string;
@@ -38,7 +38,7 @@ export default function PlanPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { user: clerkUser } = useConditionalAuth();
-  
+
   const user: User | null = clerkUser ? {
     id: clerkUser.id,
     username: clerkUser.username || '',

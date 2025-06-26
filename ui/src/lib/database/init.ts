@@ -1,4 +1,4 @@
-import { initializeDatabase } from './index';
+import {initializeDatabase} from './index'
 
 // Track if database has been initialized
 let isInitialized = false;

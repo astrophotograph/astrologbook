@@ -5,15 +5,15 @@ import {toast} from "sonner"
 import {Tabs, TabsList, TabsTrigger} from "@/components/ui/tabs"
 import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
 import {
+  azimuthToCompassDirection,
   calculateCurrentAltitude,
+  calculateCurrentAzimuth,
   compareAstronomicalTimes,
   defaultCoordinates,
   formatTime,
   generateNightAltitudeData,
   getMaxAltitudeTime,
   parseCoordinates,
-  calculateCurrentAzimuth,
-  azimuthToCompassDirection,
 } from "@/lib/astronomy-utils"
 import {EditNotesDialog} from "@/components/edit-notes-dialog"
 import {AstronomyObject, SortDirection, SortField} from "@/components/todo-list-types"
@@ -27,7 +27,7 @@ import {SyncStatus} from "@/components/sync-status"
 import {DataManagementDropdown} from "@/components/data-management-dropdown"
 import {ImportDialog} from "@/components/import-dialog"
 import {useDataSync} from "@/components/use-data-sync"
-import { useConditionalAuth } from "@/hooks/useConditionalAuth"
+import {useConditionalAuth} from "@/hooks/useConditionalAuth"
 
 // Main Component
 export function AstronomyTodoList() {

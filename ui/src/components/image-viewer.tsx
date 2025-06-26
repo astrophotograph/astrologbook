@@ -1,16 +1,15 @@
 'use client'
 
 import type {Image as ImageModel, User} from '@/lib/models'
-import {useState, useEffect, useRef} from "react"
+import {useState} from "react"
 import {useMeasure} from "@uidotdev/usehooks"
 import {Annotation} from "@/components/annotation"
 import Image from 'next/image'
-import { AnnotationCard } from './annotation-card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { toast } from "sonner"
+import {AnnotationCard} from './annotation-card'
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog'
+import {Button} from '@/components/ui/button'
+import {Label} from '@/components/ui/label'
+import {Input} from '@/components/ui/input'
 import {addAnnotation} from "@/app/i/[id]/add-annotation"
 
 // Type for saved circles

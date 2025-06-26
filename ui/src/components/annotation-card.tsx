@@ -5,7 +5,6 @@ import {Table, TableBody, TableCaption, TableCell, TableRow} from "@/components/
 import {useState} from "react"
 import {AstroObjectAction, fetchAstroObjectAction} from "@/lib/fetch-astro-object-action"
 import {Dialog, DialogContent, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
-import {AstroObject} from "@/lib/models"
 
 function CardDetails({state}: { state: AstroObjectAction | null }) {
   if (!state) {

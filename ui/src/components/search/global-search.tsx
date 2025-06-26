@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Search, Star, CheckSquare, Calendar, Target, Telescope } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import {useEffect, useRef, useState} from 'react'
+import {Calendar, CheckSquare, Search, Target, Telescope} from 'lucide-react'
+import {Dialog, DialogContent} from '@/components/ui/dialog'
+import {Input} from '@/components/ui/input'
+import {cn} from '@/lib/utils'
 
 // Dummy data for search results
 const dummyData = {

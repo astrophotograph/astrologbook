@@ -1,15 +1,15 @@
 // Path: app/c/[id]/messier-collection.tsx
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import type {Collection, User, Image} from "@/lib/models"
+import {useEffect, useRef, useState} from 'react'
+import type {Collection, Image, User} from "@/lib/models"
 // import { CollectionHeader } from "@/app/c/[id]/collection-header"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
-import { Search } from "lucide-react"
+import {Card, CardContent} from "@/components/ui/card"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {ScrollArea} from "@/components/ui/scroll-area"
+import {HoverCard, HoverCardContent, HoverCardTrigger} from "@/components/ui/hover-card"
+import {Search} from "lucide-react"
 import {getImages} from "@/app/c/[id]/get-images"
 import {getCatalogObjects} from "@/app/c/[id]/fetch-catalog-objects"
 import {AstroObjectAction} from "@/lib/fetch-astro-object-action"

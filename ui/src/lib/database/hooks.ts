@@ -1,4 +1,4 @@
-import { sequelize } from './connection';
+import {sequelize} from './connection'
 
 /**
  * Initialize SQLite database with proper settings

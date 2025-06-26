@@ -1,11 +1,11 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {Moon as MoonIcon} from "lucide-react"
 import {MoonPhase as Moon} from "@/components/moon"
 import SunCalc from 'suncalc'
-import { format } from 'date-fns'
+import {format} from 'date-fns'
 
 export function MoonPhase() {
   const now = new Date()

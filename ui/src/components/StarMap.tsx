@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import * as d3 from "d3";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Maximize2, Minimize2, RotateCcw, Eye, EyeOff } from "lucide-react";
-import { defaultCoordinates } from "@/lib/astronomy-utils";
-import * as SunCalc from "suncalc";
+import {useEffect, useRef, useState} from "react"
+import * as d3 from "d3"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Button} from "@/components/ui/button"
+import {Switch} from "@/components/ui/switch"
+import {Label} from "@/components/ui/label"
+import {Maximize2, Minimize2, RotateCcw} from "lucide-react"
+import {defaultCoordinates} from "@/lib/astronomy-utils"
+import * as SunCalc from "suncalc"
 
 interface StarMapProps {
   width?: number;

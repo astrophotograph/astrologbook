@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { toast } from "sonner";
-import { AstronomyObject } from "@/components/todo-list-types";
+import {useCallback, useState} from "react"
+import {toast} from "sonner"
+import {AstronomyObject} from "@/components/todo-list-types"
 
 export const useDataSync = (userId: string, initialData: AstronomyObject[]) => {
   const [objects, setObjects] = useState<AstronomyObject[]>(initialData);

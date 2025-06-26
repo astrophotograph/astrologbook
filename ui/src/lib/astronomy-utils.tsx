@@ -1,4 +1,4 @@
-import SunCalc from "suncalc";
+import SunCalc from "suncalc"
 
 interface Coordinates {
   latitude: number;

@@ -1,5 +1,5 @@
-import { getDatabaseConfig } from '@/lib/database/config';
-import { getDefaultUserId } from '@/lib/database';
+import {getDatabaseConfig} from '@/lib/database/config'
+import {getDefaultUserId} from '@/lib/database'
 
 /**
  * Check if SQLite auto-login should be used
