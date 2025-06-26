@@ -31,14 +31,27 @@ export async function ObservationLogCard({collection, defaultPath, size = 'small
           <img src={collection.favorite_image!}
                alt={collection.name}
                className={"object-cover w-full h-96 relative"}/>
-          <div className={'absolute bottom-1 left-1 text-sm'}>{imageCount} photos</div>
+          
+          {/* Collection title overlay at top */}
+          <div className={'absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3'}>
+            <h3 className={'text-white font-semibold text-lg leading-tight'}>{collection.name}</h3>
+          </div>
+          
+          {/* Photo count and tags at bottom */}
+          <div className={'absolute bottom-1 left-1 text-sm text-white bg-black/50 px-2 py-1 rounded'}>{imageCount} photos</div>
           <div className={'absolute bottom-1 right-1 space-x-2'}>
             {tags.map((tag) => (
               <span key={tag} className={'bg-amber-800 px-2 py-0.5 text-xs rounded-lg'}>{tag}</span>
             ))}
           </div>
         </CardContent>
-        <p className={'absolute bottom-0 left-0 right-0 text-center'}>{collection.session_date || collection.name}</p>
+        
+        {/* Session date at bottom */}
+        {collection.session_date && (
+          <div className={'absolute bottom-0 left-0 right-0 bg-black/60 text-center py-1'}>
+            <p className={'text-white text-sm'}>{collection.session_date}</p>
+          </div>
+        )}
         {/*<CardHeader>*/}
         {/*  <CardTitle>{collection.name}</CardTitle>*/}
         {/*  <CardDescription className={'truncate'}>{collection.description}</CardDescription>*/}
