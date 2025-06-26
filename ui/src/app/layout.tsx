@@ -34,16 +34,8 @@ export const metadata: Metadata = {
   description: "Astronomy Observation Log.",
 };
 
-// Conditional auth wrapper component
+// Always provide ClerkProvider but configure it appropriately for the mode
 function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const isSQLiteMode = isSQLiteModeServer();
-
-  // In SQLite mode, completely disable Clerk widgets
-  if (isSQLiteMode) {
-    return <>{children}</>;
-  }
-
-  // In non-SQLite mode, use Clerk provider
   return <ClerkProvider>{children}</ClerkProvider>;
 }
 
