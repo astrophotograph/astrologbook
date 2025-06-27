@@ -14,6 +14,7 @@ import {WeatherConditions} from "@/components/WeatherConditions"
 import {MoonPhase} from "@/components/MoonPhase"
 import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
 import {StarMap} from "@/components/StarMap"
+import {AladinLite} from "@/components/AladinLite"
 import {EditScheduleItemDialog} from "@/components/edit-schedule-item-dialog"
 import {Calendar, ChevronDown, Clock, Edit, Info, Map, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
 import {toast} from "sonner"
@@ -1134,7 +1135,7 @@ export default function PlanPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Map className="w-5 h-5" />
-                    Interactive Sky Map
+                    Interactive Sky Maps
                   </CardTitle>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1154,24 +1155,46 @@ export default function PlanPage() {
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Real-time interactive sky map showing stars, constellations, and celestial objects
+                    Real-time interactive sky maps showing stars, constellations, and celestial objects
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="relative">
-                    <StarMap 
-                      width={800} 
-                      height={600} 
-                      className="w-full border rounded-lg"
-                    />
-                    <div className="mt-4 text-xs text-muted-foreground">
-                      <p>• <strong>Reset View:</strong> Use the ↻ button to update to current time</p>
-                      <p>• <strong>Customizable Display:</strong> Toggle constellation lines, star names, and Milky Way</p>
-                      <p>• <strong>Real-time Updates:</strong> Map reflects current sky based on your location and time</p>
-                      <p>• <strong>Fullscreen Mode:</strong> Click maximize for detailed sky viewing</p>
-                      <p>• <strong>Interactive Features:</strong> Full sky map with 300+ stars and constellation patterns</p>
-                    </div>
-                  </div>
+                  <Tabs defaultValue="starmap" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="starmap">
+                        Local Sky Map
+                      </TabsTrigger>
+                      <TabsTrigger value="aladin">
+                        Aladin Lite Survey
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="starmap">
+                      <div className="relative">
+                        <StarMap 
+                          width={800} 
+                          height={600} 
+                          className="w-full border rounded-lg"
+                        />
+                        <div className="mt-4 text-xs text-muted-foreground">
+                          <p>• <strong>Reset View:</strong> Use the ↻ button to update to current time</p>
+                          <p>• <strong>Customizable Display:</strong> Toggle constellation lines, star names, and Milky Way</p>
+                          <p>• <strong>Real-time Updates:</strong> Map reflects current sky based on your location and time</p>
+                          <p>• <strong>Fullscreen Mode:</strong> Click maximize for detailed sky viewing</p>
+                          <p>• <strong>Interactive Features:</strong> Full sky map with 300+ stars and constellation patterns</p>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="aladin">
+                      <AladinLite 
+                        width={800} 
+                        height={600} 
+                        className="w-full"
+                        userLocation={userLocation}
+                      />
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </TabsContent>
