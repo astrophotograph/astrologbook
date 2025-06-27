@@ -422,6 +422,10 @@ export function StarMap({ width = 400, height = 400, className = "" }: StarMapPr
 
     svg.attr("width", actualWidth).attr("height", actualHeight);
 
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${actualWidth / 2}, ${actualHeight / 2})`);
+
     // Add zoom and pan behavior
     const zoom = d3.zoom()
       .scaleExtent([0.5, 5]) // Allow zoom from 50% to 500%
@@ -429,10 +433,6 @@ export function StarMap({ width = 400, height = 400, className = "" }: StarMapPr
         const { transform } = event;
         g.attr("transform", `translate(${actualWidth / 2 + transform.x}, ${actualHeight / 2 + transform.y}) scale(${transform.k})`);
       });
-
-    const g = svg
-      .append("g")
-      .attr("transform", `translate(${actualWidth / 2}, ${actualHeight / 2})`);
 
     // Apply zoom behavior to SVG
     svg.call(zoom);
