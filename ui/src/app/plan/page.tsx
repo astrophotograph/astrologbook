@@ -14,7 +14,8 @@ import {WeatherConditions} from "@/components/WeatherConditions"
 import {MoonPhase} from "@/components/MoonPhase"
 import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
 import {StarMap} from "@/components/StarMap"
-import {Calendar, ChevronDown, Clock, Info, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
+import {EditScheduleItemDialog} from "@/components/edit-schedule-item-dialog"
+import {Calendar, ChevronDown, Clock, Edit, Info, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
 import {toast} from "sonner"
 import {AstroObject, User} from "@/lib/models"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
@@ -84,6 +85,8 @@ export default function PlanPage() {
   } | null>(null);
   const [quickAddStartTime, setQuickAddStartTime] = useState("");
   const [quickAddDuration, setQuickAddDuration] = useState(30);
+  const [showEditItemDialog, setShowEditItemDialog] = useState(false);
+  const [editingItem, setEditingItem] = useState<PlanningItem | null>(null);
 
   const { user: clerkUser, isSQLiteMode } = useAuth();
 
@@ -389,6 +392,23 @@ export default function PlanPage() {
     const updatedItems = activeSchedule.items.filter(item => item.id !== id);
     await updateScheduleItems(updatedItems);
     toast.success('Removed from schedule');
+  };
+
+  // Edit schedule item
+  const editScheduleItem = (item: PlanningItem) => {
+    setEditingItem(item);
+    setShowEditItemDialog(true);
+  };
+
+  const saveEditedItem = async (updatedItem: PlanningItem) => {
+    if (!activeSchedule) return;
+    
+    const updatedItems = activeSchedule.items.map(item => 
+      item.id === updatedItem.id ? updatedItem : item
+    ).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    await updateScheduleItems(updatedItems);
+    toast.success('Schedule item updated');
   };
 
   // Add recommendation to schedule
@@ -1070,13 +1090,24 @@ export default function PlanPage() {
                                     <span>Mag: {item.magnitude}</span>
                                   </div>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeFromSchedule(item.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => editScheduleItem(item)}
+                                    title="Edit schedule item"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeFromSchedule(item.id)}
+                                    title="Remove from schedule"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             ))
                           ) : (
@@ -1114,6 +1145,16 @@ export default function PlanPage() {
           dec={selectedObject.metadata_?.dec || '0'}
         />
       )}
+
+      {/* Edit Schedule Item Dialog */}
+      <EditScheduleItemDialog
+        open={showEditItemDialog}
+        onOpenChange={setShowEditItemDialog}
+        item={editingItem}
+        onSave={saveEditedItem}
+        activeSchedule={activeSchedule}
+        userLocation={userLocation}
+      />
 
       {/* Add to Schedule Dialog */}
       <Dialog open={showAddToScheduleDialog} onOpenChange={setShowAddToScheduleDialog}>
