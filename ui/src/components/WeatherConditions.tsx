@@ -3,8 +3,10 @@
 import {useEffect, useState} from "react"
 import {Badge} from "@/components/ui/badge"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
-import {Cloud, Droplets, Eye, MapPin, RefreshCw, Wind} from "lucide-react"
+import {Cloud, Droplets, Eye, MapPin, RefreshCw, Wind, Plus, X, Search} from "lucide-react"
 import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
 
 interface WeatherData {
   condition: string;
@@ -32,16 +34,24 @@ interface LocationData {
   latitude: number;
   longitude: number;
   city?: string;
+  id: string;
+  name: string;
+  isCurrentLocation?: boolean;
 }
 
 type UnitSystem = 'metric' | 'imperial';
 
 export function WeatherConditions() {
-  const [weather, setWeather] = useState<WeatherData | null>(null)
-  const [forecast, setForecast] = useState<ForecastData[]>([])
-  const [location, setLocation] = useState<LocationData | null>(null)
+  const [weatherData, setWeatherData] = useState<Map<string, WeatherData>>(new Map())
+  const [forecastData, setForecastData] = useState<Map<string, ForecastData[]>>(new Map())
+  const [locations, setLocations] = useState<LocationData[]>([])
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<LocationData[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const [units, setUnits] = useState<UnitSystem>(() => {
     // Initialize units from localStorage immediately
     if (typeof window !== 'undefined') {
@@ -54,8 +64,10 @@ export function WeatherConditions() {
 
   // Update weather when units change (but not on initial load)
   useEffect(() => {
-    if (location && weather && unitsLoaded) {
-      fetchWeatherData(location.latitude, location.longitude, units)
+    if (locations.length > 0 && unitsLoaded) {
+      locations.forEach(location => {
+        fetchWeatherDataForLocation(location, units)
+      })
     }
   }, [units])
 
@@ -101,7 +113,103 @@ export function WeatherConditions() {
     return { transparency: Math.max(20, transparency), seeing: Number(seeing.toFixed(1)) }
   }
 
-  const fetchForecastData = async (lat: number, lon: number) => {
+  const searchLocation = async (query: string) => {
+    if (!query.trim()) return
+
+    setIsSearching(true)
+    setSearchResults([])
+
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+      if (!apiKey) {
+        throw new Error('Weather API key not configured')
+      }
+
+      const response = await fetch(
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${apiKey}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to search locations')
+      }
+
+      const data = await response.json()
+      const results: LocationData[] = data.map((item: any) => ({
+        id: `search-${item.lat}-${item.lon}`,
+        name: `${item.name}${item.state ? `, ${item.state}` : ''}, ${item.country}`,
+        latitude: item.lat,
+        longitude: item.lon,
+        city: item.name,
+        isCurrentLocation: false
+      }))
+
+      setSearchResults(results)
+    } catch (err) {
+      console.error('Location search error:', err)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const addLocation = async (location: LocationData) => {
+    // Check if location already exists
+    const exists = locations.some(loc => 
+      Math.abs(loc.latitude - location.latitude) < 0.01 && 
+      Math.abs(loc.longitude - location.longitude) < 0.01
+    )
+    
+    if (exists) {
+      setSearchOpen(false)
+      return
+    }
+
+    const newLocation = {
+      ...location,
+      id: `loc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    }
+
+    const updatedLocations = [...locations, newLocation]
+    setLocations(updatedLocations)
+    
+    // Set as active if first location
+    if (!activeLocationId) {
+      setActiveLocationId(newLocation.id)
+    }
+
+    // Save to localStorage
+    localStorage.setItem('weatherLocations', JSON.stringify(updatedLocations))
+    
+    // Fetch weather data for new location
+    await fetchWeatherDataForLocation(newLocation, units)
+    
+    setSearchOpen(false)
+    setSearchQuery('')
+    setSearchResults([])
+  }
+
+  const removeLocation = (locationId: string) => {
+    const updatedLocations = locations.filter(loc => loc.id !== locationId)
+    setLocations(updatedLocations)
+    
+    // Update active location if removed
+    if (activeLocationId === locationId) {
+      setActiveLocationId(updatedLocations.length > 0 ? updatedLocations[0].id : null)
+    }
+    
+    // Remove weather data
+    const newWeatherData = new Map(weatherData)
+    const newForecastData = new Map(forecastData)
+    newWeatherData.delete(locationId)
+    newForecastData.delete(locationId)
+    setWeatherData(newWeatherData)
+    setForecastData(newForecastData)
+    
+    // Save to localStorage
+    localStorage.setItem('weatherLocations', JSON.stringify(updatedLocations))
+  }
+
+  const fetchForecastDataForLocation = async (location: LocationData, unitSystem: UnitSystem = units) => {
     try {
       const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
       if (!apiKey) {
@@ -110,7 +218,7 @@ export function WeatherConditions() {
       }
 
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=${units}`
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${location.latitude}&lon=${location.longitude}&appid=${apiKey}&units=${unitSystem}`
       )
 
       if (!response.ok) {
@@ -120,7 +228,7 @@ export function WeatherConditions() {
       const data = await response.json()
 
       // Take the next 16 3-hour intervals (48 hours)
-      const forecastData: ForecastData[] = data.list
+      const forecast: ForecastData[] = data.list
         .slice(0, 16)
         .map((item: any) => {
           const dateTime = new Date(item.dt * 1000)
@@ -148,7 +256,7 @@ export function WeatherConditions() {
           }
         })
 
-      setForecast(forecastData)
+      setForecastData(prev => new Map(prev.set(location.id, forecast)))
     } catch (err) {
       console.error('Forecast fetch error:', err)
       // Fallback to mock data if API fails
@@ -174,15 +282,12 @@ export function WeatherConditions() {
           temperature: 10 + Math.random() * 20
         })
       }
-      setForecast(mockForecast)
+      setForecastData(prev => new Map(prev.set(location.id, mockForecast)))
     }
   }
 
-  const fetchWeatherData = async (lat: number, lon: number, unitSystem: UnitSystem = units) => {
+  const fetchWeatherDataForLocation = async (location: LocationData, unitSystem: UnitSystem = units) => {
     try {
-      setIsLoading(true)
-      setError(null)
-
       // Using OpenWeatherMap API (you'll need to add NEXT_PUBLIC_OPENWEATHER_API_KEY to your .env)
       const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
       if (!apiKey) {
@@ -190,7 +295,7 @@ export function WeatherConditions() {
       }
 
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=${unitSystem}`
+        `https://api.openweathermap.org/data/2.5/weather?lat=${location.latitude}&lon=${location.longitude}&appid=${apiKey}&units=${unitSystem}`
       )
 
       if (!response.ok) {
@@ -199,7 +304,7 @@ export function WeatherConditions() {
 
       const data = await response.json()
 
-      const weatherData: WeatherData = {
+      const weather: WeatherData = {
         condition: data.weather[0].main.toLowerCase(),
         temperature: Math.round(data.main.temp),
         humidity: data.main.humidity,
@@ -210,15 +315,14 @@ export function WeatherConditions() {
         description: data.weather[0].description
       }
 
-      setWeather(weatherData)
+      setWeatherData(prev => new Map(prev.set(location.id, weather)))
       // Also fetch forecast data
-      await fetchForecastData(lat, lon)
+      await fetchForecastDataForLocation(location, unitSystem)
     } catch (err) {
       console.error('Weather fetch error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch weather data')
 
       // Fallback to mock data
-      setWeather({
+      const mockWeather: WeatherData = {
         condition: 'clear',
         temperature: unitSystem === 'metric' ? 15 : 59,
         humidity: 45,
@@ -227,13 +331,27 @@ export function WeatherConditions() {
         visibility: unitSystem === 'metric' ? 10 : 6.2,
         cloudCover: 20,
         description: 'clear sky'
-      })
-    } finally {
-      setIsLoading(false)
+      }
+      setWeatherData(prev => new Map(prev.set(location.id, mockWeather)))
     }
   }
 
-  const getCurrentLocation = () => {
+  const getCityName = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        return data.city || data.locality || data.principalSubdivision || 'Unknown'
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err)
+    }
+    return 'Current Location'
+  }
+
+  const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by this browser')
       setIsLoading(false)
@@ -242,27 +360,38 @@ export function WeatherConditions() {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const newLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        }
+        try {
+          const cityName = await getCityName(position.coords.latitude, position.coords.longitude)
+          
+          const newLocation: LocationData = {
+            id: 'current-location',
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            name: cityName,
+            city: cityName,
+            isCurrentLocation: true
+          }
 
-        setLocation(newLocation)
-        localStorage.setItem('weatherLocation', JSON.stringify(newLocation))
-        await fetchWeatherData(newLocation.latitude, newLocation.longitude, units)
+          // Check if current location already exists, if so update it
+          const existingLocations = locations.filter(loc => !loc.isCurrentLocation)
+          const updatedLocations = [newLocation, ...existingLocations]
+          
+          setLocations(updatedLocations)
+          setActiveLocationId(newLocation.id)
+          
+          // Save to localStorage
+          localStorage.setItem('weatherLocations', JSON.stringify(updatedLocations))
+          
+          await fetchWeatherDataForLocation(newLocation, units)
+        } catch (err) {
+          console.error('Error processing current location:', err)
+          setError('Unable to process your location')
+        }
       },
       (error) => {
         console.error('Geolocation error:', error)
         setError('Unable to get your location')
         setIsLoading(false)
-
-        // Try to use saved location or default
-        const savedLocation = localStorage.getItem('weatherLocation')
-        if (savedLocation) {
-          const parsed = JSON.parse(savedLocation)
-          setLocation(parsed)
-          fetchWeatherData(parsed.latitude, parsed.longitude, units)
-        }
       },
       {
         enableHighAccuracy: true,
@@ -273,32 +402,60 @@ export function WeatherConditions() {
   }
 
   useEffect(() => {
-    // Try to load saved location first
-    const savedLocation = localStorage.getItem('weatherLocation')
-    if (savedLocation) {
-      try {
-        const parsed = JSON.parse(savedLocation)
-        setLocation(parsed)
-        fetchWeatherData(parsed.latitude, parsed.longitude, units)
-        return
-      } catch (err) {
-        console.error('Error parsing saved location:', err)
+    const initializeLocations = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      // Try to load saved locations first
+      const savedLocations = localStorage.getItem('weatherLocations')
+      if (savedLocations) {
+        try {
+          const parsed: LocationData[] = JSON.parse(savedLocations)
+          if (parsed.length > 0) {
+            setLocations(parsed)
+            setActiveLocationId(parsed[0].id)
+            
+            // Fetch weather data for all saved locations
+            for (const location of parsed) {
+              await fetchWeatherDataForLocation(location, units)
+            }
+            setIsLoading(false)
+            return
+          }
+        } catch (err) {
+          console.error('Error parsing saved locations:', err)
+        }
       }
+
+      // If no saved locations, get current location
+      await getCurrentLocation()
+      setIsLoading(false)
     }
 
-    // If no saved location, get current location
-    getCurrentLocation()
-  }, [units])
+    initializeLocations()
+  }, [])
 
-  const refreshWeather = () => {
-    if (location) {
-      fetchWeatherData(location.latitude, location.longitude, units)
+  const refreshWeather = async () => {
+    if (activeLocationId) {
+      const activeLocation = locations.find(loc => loc.id === activeLocationId)
+      if (activeLocation) {
+        await fetchWeatherDataForLocation(activeLocation, units)
+      }
+    } else if (locations.length > 0) {
+      for (const location of locations) {
+        await fetchWeatherDataForLocation(location, units)
+      }
     } else {
-      getCurrentLocation()
+      await getCurrentLocation()
     }
   }
 
-  if (isLoading) {
+  // Get active location data
+  const activeLocation = activeLocationId ? locations.find(loc => loc.id === activeLocationId) : null
+  const weather = activeLocationId ? weatherData.get(activeLocationId) : null
+  const forecast = activeLocationId ? forecastData.get(activeLocationId) || [] : []
+
+  if (isLoading && locations.length === 0) {
     return (
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
@@ -317,7 +474,7 @@ export function WeatherConditions() {
     )
   }
 
-  if (error) {
+  if (error && locations.length === 0) {
     return (
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
@@ -339,9 +496,7 @@ export function WeatherConditions() {
     )
   }
 
-  if (!weather) return null
-
-  const seeingData = getSeeingCondition(weather.visibility, weather.cloudCover, weather.windSpeed)
+  const seeingData = weather ? getSeeingCondition(weather.visibility, weather.cloudCover, weather.windSpeed) : null
 
   return (
     <Card className="bg-gray-800 border-gray-700">
@@ -350,6 +505,71 @@ export function WeatherConditions() {
           <Cloud className="w-5 h-5" />
           Weather Conditions
           <div className="ml-auto flex items-center gap-1">
+            <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  title="Add location"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-gray-800 border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Add Weather Location</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search for a city..."
+                      value={searchQuery}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === 'Enter' && searchQuery.trim()) {
+                          searchLocation(searchQuery)
+                        }
+                      }}
+                      className="bg-gray-700 border-gray-600 text-white"
+                    />
+                    <Button
+                      onClick={() => searchLocation(searchQuery)}
+                      disabled={!searchQuery.trim() || isSearching}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isSearching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  
+                  <Button
+                    onClick={getCurrentLocation}
+                    variant="outline"
+                    className="w-full border-gray-600 text-gray-300 hover:text-white"
+                  >
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Use Current Location
+                  </Button>
+
+                  {searchResults.length > 0 && (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <Button
+                          key={result.id}
+                          variant="ghost"
+                          className="w-full justify-start text-left text-gray-300 hover:text-white hover:bg-gray-700"
+                          onClick={() => addLocation(result)}
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {result.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button
               variant="ghost"
               size="sm"
@@ -372,57 +592,101 @@ export function WeatherConditions() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {location && (
-          <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
-            <MapPin className="w-3 h-3" />
-            <span>{location.latitude.toFixed(2)}, {location.longitude.toFixed(2)}</span>
+        {/* Location Tabs */}
+        {locations.length > 1 && (
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {locations.map((location) => (
+              <Button
+                key={location.id}
+                variant={activeLocationId === location.id ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveLocationId(location.id)}
+                className={`text-xs whitespace-nowrap flex items-center gap-1 ${
+                  activeLocationId === location.id 
+                    ? "bg-blue-600 text-white" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {location.isCurrentLocation && <MapPin className="w-3 h-3" />}
+                {location.name}
+                {locations.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation()
+                      removeLocation(location.id)
+                    }}
+                    className="h-4 w-4 p-0 ml-1 hover:bg-red-600"
+                  >
+                    <X className="w-2 h-2" />
+                  </Button>
+                )}
+              </Button>
+            ))}
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <Cloud className="w-4 h-4 text-blue-400" />
-            <div>
-              <div className="text-gray-300">Sky</div>
-              <div className="text-white font-medium capitalize">{weather.description}</div>
-            </div>
+        {activeLocation && (
+          <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
+            <MapPin className="w-3 h-3" />
+            <span>{activeLocation.latitude.toFixed(2)}, {activeLocation.longitude.toFixed(2)}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Droplets className="w-4 h-4 text-blue-400" />
-            <div>
-              <div className="text-gray-300">Humidity</div>
-              <div className="text-white font-medium">{weather.humidity}%</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Wind className="w-4 h-4 text-gray-400" />
-            <div>
-              <div className="text-gray-300">Wind</div>
-              <div className="text-white font-medium">{weather.windSpeed.toFixed(1)} {getSpeedUnit()}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-green-400" />
-            <div>
-              <div className="text-gray-300">Seeing</div>
-              <div className="text-white font-medium">
-                {seeingData.condition}
-                <span className="text-xs text-gray-400 ml-1">({seeingData.value.toFixed(1)}")</span>
+        )}
+
+        {weather ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-blue-400" />
+                <div>
+                  <div className="text-gray-300">Sky</div>
+                  <div className="text-white font-medium capitalize">{weather.description}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-blue-400" />
+                <div>
+                  <div className="text-gray-300">Humidity</div>
+                  <div className="text-white font-medium">{weather.humidity}%</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Wind className="w-4 h-4 text-gray-400" />
+                <div>
+                  <div className="text-gray-300">Wind</div>
+                  <div className="text-white font-medium">{weather.windSpeed.toFixed(1)} {getSpeedUnit()}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-green-400" />
+                <div>
+                  <div className="text-gray-300">Seeing</div>
+                  <div className="text-white font-medium">
+                    {seeingData?.condition}
+                    <span className="text-xs text-gray-400 ml-1">({seeingData?.value.toFixed(1)}")</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-gray-300">Temperature</div>
-            <div className="text-white font-medium">{Math.round(weather.temperature)}{getTemperatureUnit()}</div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-gray-300">Temperature</div>
+                <div className="text-white font-medium">{Math.round(weather.temperature)}{getTemperatureUnit()}</div>
+              </div>
+              <div>
+                <div className="text-gray-300">Visibility</div>
+                <div className="text-white font-medium">{weather.visibility.toFixed(1)} {getDistanceUnit()}</div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-4 text-gray-400">
+            <RefreshCw className="w-4 h-4 mx-auto mb-2 animate-spin" />
+            Loading weather data...
           </div>
-          <div>
-            <div className="text-gray-300">Visibility</div>
-            <div className="text-white font-medium">{weather.visibility.toFixed(1)} {getDistanceUnit()}</div>
-          </div>
-        </div>
+        )}
 
         <div className="pt-4 border-t border-gray-700">
           <h4 className="text-sm font-medium mb-3">48-Hour Forecast (3-Hour Intervals)</h4>
@@ -541,29 +805,31 @@ export function WeatherConditions() {
         </div>
 
         {/* Weather Status Indicator */}
-        <div className="pt-2 border-t border-gray-700">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-300">Observing Conditions</span>
-            <Badge
-              variant={
-                seeingData.condition === "Excellent" || seeingData.condition === "Good"
-                  ? "default"
+        {weather && seeingData && (
+          <div className="pt-2 border-t border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-300">Observing Conditions</span>
+              <Badge
+                variant={
+                  seeingData.condition === "Excellent" || seeingData.condition === "Good"
+                    ? "default"
+                    : seeingData.condition === "Fair"
+                      ? "secondary"
+                      : "destructive"
+                }
+              >
+                {seeingData.condition === "Excellent" || seeingData.condition === "Good"
+                  ? "Optimal"
                   : seeingData.condition === "Fair"
-                    ? "secondary"
-                    : "destructive"
-              }
-            >
-              {seeingData.condition === "Excellent" || seeingData.condition === "Good"
-                ? "Optimal"
-                : seeingData.condition === "Fair"
-                  ? "Moderate"
-                  : "Poor"}
-            </Badge>
+                    ? "Moderate"
+                    : "Poor"}
+              </Badge>
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Cloud cover: {weather.cloudCover}%
+            </div>
           </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Cloud cover: {weather.cloudCover}%
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
