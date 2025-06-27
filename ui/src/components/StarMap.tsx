@@ -381,6 +381,7 @@ export function StarMap({ width = 400, height = 400, className = "" }: StarMapPr
   const [showConstellations, setShowConstellations] = useState(true);
   const [showStarNames, setShowStarNames] = useState(true);
   const [showMilkyWay, setShowMilkyWay] = useState(true);
+  const [zoomRef, setZoomRef] = useState<d3.ZoomBehavior<Element, unknown> | null>(null);
 
   useEffect(() => {
     // Load saved coordinates
@@ -421,9 +422,23 @@ export function StarMap({ width = 400, height = 400, className = "" }: StarMapPr
 
     svg.attr("width", actualWidth).attr("height", actualHeight);
 
+    // Add zoom and pan behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 5]) // Allow zoom from 50% to 500%
+      .on("zoom", (event) => {
+        const { transform } = event;
+        g.attr("transform", `translate(${actualWidth / 2 + transform.x}, ${actualHeight / 2 + transform.y}) scale(${transform.k})`);
+      });
+
     const g = svg
       .append("g")
       .attr("transform", `translate(${actualWidth / 2}, ${actualHeight / 2})`);
+
+    // Apply zoom behavior to SVG
+    svg.call(zoom);
+    
+    // Store zoom reference for reset function
+    setZoomRef(zoom);
 
     // Create projection for celestial coordinates
     const projection = d3
@@ -726,6 +741,14 @@ export function StarMap({ width = 400, height = 400, className = "" }: StarMapPr
 
   const resetView = () => {
     setCurrentTime(new Date());
+    // Reset zoom and pan
+    if (svgRef.current && zoomRef) {
+      const svg = d3.select(svgRef.current);
+      svg.transition().duration(750).call(
+        zoomRef.transform,
+        d3.zoomIdentity
+      );
+    }
   };
 
   if (isFullscreen) {

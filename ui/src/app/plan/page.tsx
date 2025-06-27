@@ -15,7 +15,7 @@ import {MoonPhase} from "@/components/MoonPhase"
 import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
 import {StarMap} from "@/components/StarMap"
 import {EditScheduleItemDialog} from "@/components/edit-schedule-item-dialog"
-import {Calendar, ChevronDown, Clock, Edit, Info, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
+import {Calendar, ChevronDown, Clock, Edit, Info, Map, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
 import {toast} from "sonner"
 import {AstroObject, User} from "@/lib/models"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
@@ -649,7 +649,7 @@ export default function PlanPage() {
         {/* Main Content */}
         <div className="lg:col-span-3">
           <Tabs defaultValue="lookup" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="lookup" className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
                 Object Lookup
@@ -661,6 +661,10 @@ export default function PlanPage() {
               <TabsTrigger value="schedule" className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 Schedule
+              </TabsTrigger>
+              <TabsTrigger value="skymap" className="flex items-center gap-2">
+                <Map className="w-4 h-4" />
+                Sky Map
               </TabsTrigger>
             </TabsList>
 
@@ -1121,6 +1125,53 @@ export default function PlanPage() {
                       )}
                     </>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="skymap" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Map className="w-5 h-5" />
+                    Interactive Sky Map
+                  </CardTitle>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>
+                        Location: {userLocation?.city || "Getting location..."}
+                        {locationError && " (Using default: NYC)"}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={getUserLocation}
+                      disabled={locationLoading}
+                    >
+                      {locationLoading ? "Getting Location..." : "Update Location"}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Real-time interactive sky map showing stars, constellations, and celestial objects
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative">
+                    <StarMap 
+                      width={800} 
+                      height={600} 
+                      className="w-full border rounded-lg"
+                    />
+                    <div className="mt-4 text-xs text-muted-foreground">
+                      <p>• <strong>Interactive Controls:</strong> Click and drag to pan, mouse wheel to zoom (0.5x - 5x)</p>
+                      <p>• <strong>Reset View:</strong> Use the ↻ button to reset zoom and update to current time</p>
+                      <p>• <strong>Customizable Display:</strong> Toggle constellation lines, star names, and Milky Way</p>
+                      <p>• <strong>Real-time Updates:</strong> Map reflects current sky based on your location and time</p>
+                      <p>• <strong>Fullscreen Mode:</strong> Click maximize for detailed sky viewing</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
