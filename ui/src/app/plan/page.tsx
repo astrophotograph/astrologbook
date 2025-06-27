@@ -1165,11 +1165,11 @@ export default function PlanPage() {
                       className="w-full border rounded-lg"
                     />
                     <div className="mt-4 text-xs text-muted-foreground">
-                      <p>• <strong>Interactive Controls:</strong> Click and drag to pan, mouse wheel to zoom (0.5x - 5x)</p>
-                      <p>• <strong>Reset View:</strong> Use the ↻ button to reset zoom and update to current time</p>
+                      <p>• <strong>Reset View:</strong> Use the ↻ button to update to current time</p>
                       <p>• <strong>Customizable Display:</strong> Toggle constellation lines, star names, and Milky Way</p>
                       <p>• <strong>Real-time Updates:</strong> Map reflects current sky based on your location and time</p>
                       <p>• <strong>Fullscreen Mode:</strong> Click maximize for detailed sky viewing</p>
+                      <p>• <strong>Interactive Features:</strong> Full sky map with 300+ stars and constellation patterns</p>
                     </div>
                   </div>
                 </CardContent>
