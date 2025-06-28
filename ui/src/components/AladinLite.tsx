@@ -8,9 +8,6 @@ import {Label} from "@/components/ui/label"
 import {MapPin, RotateCcw, Layers, Telescope} from "lucide-react"
 import {Switch} from "@/components/ui/switch"
 import {Input} from "@/components/ui/input"
-import {clearTimeout} from "node:timers"
-import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
-import Script from "next/script"
 
 interface AladinLiteProps {
   isLoaded?: boolean;
@@ -263,7 +260,6 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   const [projection, setProjection] = useState("SIN")
   const [fov, setFov] = useState(60)
   const [showSimbad, setShowSimbad] = useState(false)
-  const [showHipparcos, setShowHipparcos] = useState(true)
   const [showConstellations, setShowConstellations] = useState(true)
   const [showTelescopeFov, setShowTelescopeFov] = useState(false)
   const [telescopeFovWidth, setTelescopeFovWidth] = useState(30) // arcminutes
@@ -390,13 +386,6 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
     } else {
       simbadCatalogRef.current.hide()
     }
-  }
-
-  // Toggle Hipparcos catalog
-  const toggleHipparcos = (enabled: boolean) => {
-    setShowHipparcos(enabled)
-    // Implementation would be similar to Simbad toggle
-    // For now, we'll just update the state
   }
 
   // Toggle constellation lines
@@ -604,23 +593,6 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                 id="simbad-toggle"
                 checked={showSimbad}
                 onCheckedChange={toggleSimbad}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{backgroundColor: '#ffffff', border: '1px solid #666'}}
-                />
-                <Label htmlFor="hipparcos-toggle" className="text-sm">
-                  Hipparcos Stars
-                </Label>
-              </div>
-              <Switch
-                id="hipparcos-toggle"
-                checked={showHipparcos}
-                onCheckedChange={toggleHipparcos}
               />
             </div>
 
