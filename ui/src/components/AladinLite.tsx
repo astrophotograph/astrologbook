@@ -438,7 +438,7 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   // Toggle constellation lines
   const toggleConstellations = (enabled: boolean) => {
     setShowConstellations(enabled)
-    
+
     if (!aladinRef.current || !window.A) return
 
     try {
@@ -453,7 +453,7 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             shape: 'plus',
             onClick: 'showTable'
           })
-          
+
           // Add some basic constellation star data manually for testing
           // This is a simplified version - in production you'd load real constellation line data
           const constellationStars = [
@@ -463,17 +463,17 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             {ra: 12.2571, dec: 57.0326, name: 'Phecda'},
             {ra: 12.5347, dec: 56.3824, name: 'Megrez'},
           ]
-          
+
           for (const star of constellationStars) {
             constellationsRef.current.addSources([
               window.A.source(star.ra * 15, star.dec, {name: star.name}) // Convert hours to degrees
             ])
           }
-          
+
           aladinRef.current.addCatalog(constellationsRef.current)
           console.log('Basic constellation stars added')
         }
-        
+
         if (constellationsRef.current && constellationsRef.current.show) {
           constellationsRef.current.show()
           console.log('Constellation stars shown')
@@ -611,7 +611,7 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
       // Calculate rectangle corners
       const halfWidth = widthDeg / 2
       const halfHeight = heightDeg / 2
-      
+
       const fovRect = window.A.polygon([
         [targetRa - halfWidth, targetDec + halfHeight], // Top-left
         [targetRa + halfWidth, targetDec + halfHeight], // Top-right
@@ -624,7 +624,7 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
         fillOpacity: 0.1,
       })
 
-      overlay.add(fovRect)
+      overlay.addFootprints(fovRect)
       aladinRef.current.addOverlay(overlay)
       telescopeFovOverlayRef.current = overlay
     } catch (error) {
