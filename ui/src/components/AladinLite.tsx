@@ -34,8 +34,10 @@ declare global {
         addOverlay: (overlay: unknown) => void;
         removeOverlay: (overlay: unknown) => void;
         getRaDec: () => [number, number];
+        showConstellationLines?: (enabled: boolean) => void;
         view: {
           catalogHpxFOV: () => number;
+          showConstellations?: (enabled: boolean) => void;
         };
       };
       catalog: (options: Record<string, unknown>) => {
@@ -45,13 +47,23 @@ declare global {
           dec: number;
           data?: Record<string, unknown>;
         }>) => void;
+        show: () => void;
+        hide: () => void;
       };
-      catalogFromVizieR: (vizierTable: string, name: string, options: Record<string, unknown>) => unknown;
+      catalogFromVizieR: (vizierTable: string, name: string, options: Record<string, unknown>) => {
+        show: () => void;
+        hide: () => void;
+      };
+      catalogHiPS: (url: string, options: Record<string, unknown>) => {
+        show: () => void;
+        hide: () => void;
+      };
       graphicOverlay: (options: Record<string, unknown>) => {
         addFootprints: (footprints: Array<Record<string, unknown>>) => void;
         add: (shape: unknown) => void;
       };
       rect: (ra: number, dec: number, width: number, height: number, options?: Record<string, unknown>) => unknown;
+      source: (ra: number, dec: number, data: Record<string, unknown>) => unknown;
     };
   }
 }
@@ -210,7 +222,7 @@ async function buildJsonCatalog(aladin, catalogName: keyof typeof CatalogSources
 
   const catalog = CatalogSources[catalogName]
 
-  if (catalog.AladinCatalog) return
+  if (catalog.AladinCatalog) return catalog.AladinCatalog
 
   catalog.AladinCatalog = window.A.catalog({
     id: catalog.id,
@@ -237,6 +249,7 @@ async function buildJsonCatalog(aladin, catalogName: keyof typeof CatalogSources
   }
 
   aladin.addCatalog(catalog.AladinCatalog)
+  return catalog.AladinCatalog
 }
 
 
@@ -262,11 +275,25 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   const [showSimbad, setShowSimbad] = useState(false)
   const [showConstellations, setShowConstellations] = useState(true)
   const [showTelescopeFov, setShowTelescopeFov] = useState(false)
+  const [showMessier, setShowMessier] = useState(false)
+  const [showNGC, setShowNGC] = useState(false)
+  const [showIC, setShowIC] = useState(false)
+  const [showSharpless, setShowSharpless] = useState(false)
+  const [showLDN, setShowLDN] = useState(false)
+  const [showLBN, setShowLBN] = useState(false)
+  const [showBarnard, setShowBarnard] = useState(false)
   const [telescopeFovWidth, setTelescopeFovWidth] = useState(30) // arcminutes
   const [telescopeFovHeight, setTelescopeFovHeight] = useState(20) // arcminutes
   const simbadCatalogRef = useRef<unknown>(null)
   const constellationsRef = useRef<unknown>(null)
   const telescopeFovOverlayRef = useRef<unknown>(null)
+  const messierCatalogRef = useRef<unknown>(null)
+  const ngcCatalogRef = useRef<unknown>(null)
+  const icCatalogRef = useRef<unknown>(null)
+  const sharplessCatalogRef = useRef<unknown>(null)
+  const ldnCatalogRef = useRef<unknown>(null)
+  const lbnCatalogRef = useRef<unknown>(null)
+  const barnardCatalogRef = useRef<unknown>(null)
 
   // Initialize Aladin Lite
   useEffect(() => {
@@ -293,6 +320,11 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
         log: false,
       })
 
+      // Initialize constellation lines if needed
+      if (showConstellations) {
+        setTimeout(() => toggleConstellations(true), 1000)
+      }
+
       // // Add constellation lines
       // const constellationsCat = window.A.catalog({
       //   name: 'Constellations',
@@ -311,12 +343,17 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   useEffect(() => {
     if (!aladinRef.current || !window.A) return
 
-    buildJsonCatalog(aladinRef.current, 'barnard')
-    buildJsonCatalog(aladinRef.current, 'lbn')
-    buildJsonCatalog(aladinRef.current, 'ldn')
-    buildJsonCatalog(aladinRef.current, 'messier')
-    buildJsonCatalog(aladinRef.current, 'ngc')
-    buildJsonCatalog(aladinRef.current, 'sharpless')
+    const initializeCatalogs = async () => {
+      messierCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'messier')
+      ngcCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'ngc')
+      icCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'ic')
+      sharplessCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'sharpless')
+      ldnCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'ldn')
+      lbnCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'lbn')
+      barnardCatalogRef.current = await buildJsonCatalog(aladinRef.current, 'barnard')
+    }
+
+    initializeCatalogs()
   }, [window.A, aladinRef.current])
 
   // Handle survey change
@@ -391,8 +428,139 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   // Toggle constellation lines
   const toggleConstellations = (enabled: boolean) => {
     setShowConstellations(enabled)
-    // Implementation would be similar to other toggles
-    // For now, we'll just update the state
+    
+    if (!aladinRef.current || !window.A) return
+
+    try {
+      if (enabled) {
+        // Create constellation catalog if it doesn't exist
+        if (!constellationsRef.current) {
+          // Try a simple approach with Hipparcos constellation data
+          constellationsRef.current = window.A.catalog({
+            name: 'Constellations',
+            color: '#00ff00',
+            sourceSize: 1,
+            shape: 'plus',
+            onClick: 'showTable'
+          })
+          
+          // Add some basic constellation star data manually for testing
+          // This is a simplified version - in production you'd load real constellation line data
+          const constellationStars = [
+            {ra: 23.0625, dec: 89.2641, name: 'Polaris'}, // North Star
+            {ra: 14.8461, dec: 74.1556, name: 'Dubhe'}, // Big Dipper
+            {ra: 13.3985, dec: 54.9254, name: 'Merak'},
+            {ra: 12.2571, dec: 57.0326, name: 'Phecda'},
+            {ra: 12.5347, dec: 56.3824, name: 'Megrez'},
+          ]
+          
+          for (const star of constellationStars) {
+            constellationsRef.current.addSources([
+              window.A.source(star.ra * 15, star.dec, {name: star.name}) // Convert hours to degrees
+            ])
+          }
+          
+          aladinRef.current.addCatalog(constellationsRef.current)
+          console.log('Basic constellation stars added')
+        }
+        
+        if (constellationsRef.current && constellationsRef.current.show) {
+          constellationsRef.current.show()
+          console.log('Constellation stars shown')
+        }
+      } else {
+        if (constellationsRef.current && constellationsRef.current.hide) {
+          constellationsRef.current.hide()
+          console.log('Constellation stars hidden')
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling constellation stars:', error)
+    }
+  }
+
+  // Toggle Messier catalog
+  const toggleMessier = (enabled: boolean) => {
+    setShowMessier(enabled)
+    if (messierCatalogRef.current) {
+      if (enabled) {
+        messierCatalogRef.current.show()
+      } else {
+        messierCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle NGC catalog
+  const toggleNGC = (enabled: boolean) => {
+    setShowNGC(enabled)
+    if (ngcCatalogRef.current) {
+      if (enabled) {
+        ngcCatalogRef.current.show()
+      } else {
+        ngcCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle IC catalog
+  const toggleIC = (enabled: boolean) => {
+    setShowIC(enabled)
+    if (icCatalogRef.current) {
+      if (enabled) {
+        icCatalogRef.current.show()
+      } else {
+        icCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle Sharpless catalog
+  const toggleSharpless = (enabled: boolean) => {
+    setShowSharpless(enabled)
+    if (sharplessCatalogRef.current) {
+      if (enabled) {
+        sharplessCatalogRef.current.show()
+      } else {
+        sharplessCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle LDN catalog
+  const toggleLDN = (enabled: boolean) => {
+    setShowLDN(enabled)
+    if (ldnCatalogRef.current) {
+      if (enabled) {
+        ldnCatalogRef.current.show()
+      } else {
+        ldnCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle LBN catalog
+  const toggleLBN = (enabled: boolean) => {
+    setShowLBN(enabled)
+    if (lbnCatalogRef.current) {
+      if (enabled) {
+        lbnCatalogRef.current.show()
+      } else {
+        lbnCatalogRef.current.hide()
+      }
+    }
+  }
+
+  // Toggle Barnard catalog
+  const toggleBarnard = (enabled: boolean) => {
+    setShowBarnard(enabled)
+    if (barnardCatalogRef.current) {
+      if (enabled) {
+        barnardCatalogRef.current.show()
+      } else {
+        barnardCatalogRef.current.hide()
+      }
+    }
   }
 
   // Toggle telescope field of view
@@ -467,8 +635,8 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
         </CardHeader>
         <CardContent>
           <div
-            className="flex items-center justify-center border rounded-lg bg-muted/50"
-            style={{width: width, height: height}}
+            className="flex items-center justify-center border rounded-lg bg-muted/50 w-full"
+            style={{height: height}}
           >
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -578,7 +746,7 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             <Layers className="w-4 h-4"/>
             <Label className="text-sm font-medium">Catalog Layers</Label>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div
@@ -603,13 +771,132 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                   style={{backgroundColor: '#00ff00'}}
                 />
                 <Label htmlFor="constellations-toggle" className="text-sm">
-                  Constellation Lines
+                  Constellation Stars
                 </Label>
               </div>
               <Switch
                 id="constellations-toggle"
                 checked={showConstellations}
                 onCheckedChange={toggleConstellations}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#29a329'}}
+                />
+                <Label htmlFor="messier-toggle" className="text-sm">
+                  Messier
+                </Label>
+              </div>
+              <Switch
+                id="messier-toggle"
+                checked={showMessier}
+                onCheckedChange={toggleMessier}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#cccccc'}}
+                />
+                <Label htmlFor="ngc-toggle" className="text-sm">
+                  NGC
+                </Label>
+              </div>
+              <Switch
+                id="ngc-toggle"
+                checked={showNGC}
+                onCheckedChange={toggleNGC}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#cccccc'}}
+                />
+                <Label htmlFor="ic-toggle" className="text-sm">
+                  IC
+                </Label>
+              </div>
+              <Switch
+                id="ic-toggle"
+                checked={showIC}
+                onCheckedChange={toggleIC}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#00afff'}}
+                />
+                <Label htmlFor="sharpless-toggle" className="text-sm">
+                  Sharpless
+                </Label>
+              </div>
+              <Switch
+                id="sharpless-toggle"
+                checked={showSharpless}
+                onCheckedChange={toggleSharpless}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#CBCC49'}}
+                />
+                <Label htmlFor="ldn-toggle" className="text-sm">
+                  LDN
+                </Label>
+              </div>
+              <Switch
+                id="ldn-toggle"
+                checked={showLDN}
+                onCheckedChange={toggleLDN}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#CBCC49'}}
+                />
+                <Label htmlFor="lbn-toggle" className="text-sm">
+                  LBN
+                </Label>
+              </div>
+              <Switch
+                id="lbn-toggle"
+                checked={showLBN}
+                onCheckedChange={toggleLBN}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{backgroundColor: '#E0FFFF'}}
+                />
+                <Label htmlFor="barnard-toggle" className="text-sm">
+                  Barnard
+                </Label>
+              </div>
+              <Switch
+                id="barnard-toggle"
+                checked={showBarnard}
+                onCheckedChange={toggleBarnard}
               />
             </div>
           </div>
@@ -790,8 +1077,8 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
         {/* Aladin container */}
         <div
           ref={divRef}
-          className="border rounded-lg"
-          style={{width: width, height: height}}
+          className="border rounded-lg w-full"
+          style={{height: height}}
         />
 
         {/* Instructions */}
