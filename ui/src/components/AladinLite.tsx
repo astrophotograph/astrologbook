@@ -284,6 +284,9 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   const [showBarnard, setShowBarnard] = useState(false)
   const [telescopeFovWidth, setTelescopeFovWidth] = useState(30) // arcminutes
   const [telescopeFovHeight, setTelescopeFovHeight] = useState(20) // arcminutes
+  const [telescopeFovCenterRa, setTelescopeFovCenterRa] = useState<number | null>(null)
+  const [telescopeFovCenterDec, setTelescopeFovCenterDec] = useState<number | null>(null)
+  const showTelescopeFovRef = useRef(false)
   const simbadCatalogRef = useRef<unknown>(null)
   const constellationsRef = useRef<unknown>(null)
   const telescopeFovOverlayRef = useRef<unknown>(null)
@@ -324,6 +327,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
       if (showConstellations) {
         setTimeout(() => toggleConstellations(true), 1000)
       }
+
+      // Add click handler for repositioning FOV rectangle
+      aladinRef.current.on('click', (object: any) => {
+        if (showTelescopeFovRef.current && object?.ra != null && object?.dec != null) {
+          updateFovPosition(object.ra, object.dec)
+        }
+      })
 
       // // Add constellation lines
       // const constellationsCat = window.A.catalog({
@@ -563,51 +573,83 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
     }
   }
 
+  // Update FOV rectangle position
+  const updateFovPosition = (ra?: number, dec?: number, force = false) => {
+    if (!aladinRef.current || !window.A || (!showTelescopeFov && !force)) {
+      return
+    }
+
+    // Use provided coordinates or current map center
+    const targetRa = ra ?? aladinRef.current.getRaDec()[0]
+    const targetDec = dec ?? aladinRef.current.getRaDec()[1]
+
+    // Update stored center coordinates
+    setTelescopeFovCenterRa(targetRa)
+    setTelescopeFovCenterDec(targetDec)
+
+    // Remove existing overlay and create new one at the new position
+    if (telescopeFovOverlayRef.current) {
+      try {
+        aladinRef.current.removeOverlay(telescopeFovOverlayRef.current)
+        telescopeFovOverlayRef.current = null
+      } catch (error) {
+        console.error('Error removing FOV overlay:', error)
+      }
+    }
+
+    // Create new overlay at the target position
+    try {
+      const widthDeg = telescopeFovWidth / 60
+      const heightDeg = telescopeFovHeight / 60
+
+      const overlay = window.A.graphicOverlay({
+        color: '#ff0000',
+        lineWidth: 2,
+        name: 'Telescope FOV',
+      })
+
+      // Calculate rectangle corners
+      const halfWidth = widthDeg / 2
+      const halfHeight = heightDeg / 2
+      
+      const fovRect = window.A.polygon([
+        [targetRa - halfWidth, targetDec + halfHeight], // Top-left
+        [targetRa + halfWidth, targetDec + halfHeight], // Top-right
+        [targetRa + halfWidth, targetDec - halfHeight], // Bottom-right
+        [targetRa - halfWidth, targetDec - halfHeight]  // Bottom-left
+      ], {
+        color: '#ff0000',
+        lineWidth: 2,
+        fillColor: '#ff0000',
+        fillOpacity: 0.1,
+      })
+
+      overlay.add(fovRect)
+      aladinRef.current.addOverlay(overlay)
+      telescopeFovOverlayRef.current = overlay
+    } catch (error) {
+      console.error('Error creating FOV overlay:', error)
+    }
+  }
+
   // Toggle telescope field of view
   const toggleTelescopeFov = (enabled: boolean) => {
     setShowTelescopeFov(enabled)
+    showTelescopeFovRef.current = enabled
 
     if (!aladinRef.current || !window.A) return
 
     if (enabled) {
-      // Add telescope FOV overlay
-      if (!telescopeFovOverlayRef.current) {
-        try {
-          // Get current center coordinates
-          const [ra, dec] = aladinRef.current.getRaDec()
-
-          // Convert arcminutes to degrees
-          const widthDeg = telescopeFovWidth / 60
-          const heightDeg = telescopeFovHeight / 60
-
-          // Create a graphic overlay for the telescope FOV
-          const overlay = window.A.graphicOverlay({
-            color: '#ff0000',
-            lineWidth: 2,
-            name: 'Telescope FOV',
-          })
-
-          // Create a rectangle representing the telescope field of view
-          const fovRect = window.A.rect(ra, dec, widthDeg, heightDeg, {
-            color: '#ff0000',
-            lineWidth: 2,
-            fillColor: '#ff0000',
-            fillOpacity: 0.1,
-          })
-
-          overlay.add(fovRect)
-          aladinRef.current.addOverlay(overlay)
-          telescopeFovOverlayRef.current = overlay
-        } catch (error) {
-          console.error('Error adding telescope FOV overlay:', error)
-        }
-      }
+      // Add small delay to ensure state is updated, and force the update
+      setTimeout(() => updateFovPosition(undefined, undefined, true), 50)
     } else {
       // Remove telescope FOV overlay
       if (telescopeFovOverlayRef.current && aladinRef.current) {
         try {
           aladinRef.current.removeOverlay(telescopeFovOverlayRef.current)
           telescopeFovOverlayRef.current = null
+          setTelescopeFovCenterRa(null)
+          setTelescopeFovCenterDec(null)
         } catch (error) {
           console.error('Error removing telescope FOV overlay:', error)
         }
@@ -617,10 +659,9 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
 
   // Update telescope FOV size
   const updateTelescopeFovSize = () => {
-    if (showTelescopeFov && telescopeFovOverlayRef.current) {
-      // Remove old overlay and create new one with updated dimensions
-      toggleTelescopeFov(false)
-      setTimeout(() => toggleTelescopeFov(true), 100)
+    if (showTelescopeFov) {
+      // Update with current center coordinates if available, otherwise use map center
+      updateFovPosition(telescopeFovCenterRa ?? undefined, telescopeFovCenterDec ?? undefined)
     }
   }
 
@@ -1020,11 +1061,26 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                     </Button>
                   </div>
                 </div>
+
+                {/* FOV Center Coordinates Display */}
+                {telescopeFovCenterRa !== null && telescopeFovCenterDec !== null && (
+                  <div className="mt-3 p-2 bg-muted/50 rounded-md">
+                    <Label className="text-xs text-muted-foreground">FOV Center:</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">RA:</span> {telescopeFovCenterRa.toFixed(4)}°
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Dec:</span> {telescopeFovCenterDec.toFixed(4)}°
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Display a red rectangle showing your telescope&apos;s field of view at the current center position
+            Display a red rectangle showing your telescope&apos;s field of view. Click anywhere on the sky map to move the FOV rectangle to that position.
           </p>
         </div>
 
