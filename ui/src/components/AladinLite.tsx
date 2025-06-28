@@ -286,7 +286,10 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   const [telescopeFovHeight, setTelescopeFovHeight] = useState(20) // arcminutes
   const [telescopeFovCenterRa, setTelescopeFovCenterRa] = useState<number | null>(null)
   const [telescopeFovCenterDec, setTelescopeFovCenterDec] = useState<number | null>(null)
+  const [activePreset, setActivePreset] = useState<string | null>(null)
   const showTelescopeFovRef = useRef(false)
+  const telescopeFovWidthRef = useRef(30)
+  const telescopeFovHeightRef = useRef(20)
   const simbadCatalogRef = useRef<unknown>(null)
   const constellationsRef = useRef<unknown>(null)
   const telescopeFovOverlayRef = useRef<unknown>(null)
@@ -330,8 +333,15 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
 
       // Add click handler for repositioning FOV rectangle
       aladinRef.current.on('click', (object: any) => {
-        if (showTelescopeFovRef.current && object?.ra != null && object?.dec != null) {
-          updateFovPosition(object.ra, object.dec)
+        // Only move FOV on click, not drag
+        if (showTelescopeFovRef.current && !object?.isDragging) {
+          if (object?.ra != null && object?.dec != null) {
+            updateFovPosition(object.ra, object.dec)
+          } else {
+            // Try getting coordinates from the current view center if object doesn't have coordinates
+            const coords = aladinRef.current.getRaDec()
+            updateFovPosition(coords[0], coords[1])
+          }
         }
       })
 
@@ -574,8 +584,8 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   }
 
   // Update FOV rectangle position
-  const updateFovPosition = (ra?: number, dec?: number, force = false) => {
-    if (!aladinRef.current || !window.A || (!showTelescopeFov && !force)) {
+  const updateFovPosition = (ra?: number, dec?: number, force = false, width?: number, height?: number) => {
+    if (!aladinRef.current || !window.A || (!showTelescopeFovRef.current && !force)) {
       return
     }
 
@@ -599,8 +609,8 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
 
     // Create new overlay at the target position
     try {
-      const widthDeg = telescopeFovWidth / 60
-      const heightDeg = telescopeFovHeight / 60
+      const widthDeg = (width ?? telescopeFovWidthRef.current) / 60
+      const heightDeg = (height ?? telescopeFovHeightRef.current) / 60
 
       const overlay = window.A.graphicOverlay({
         color: '#ff0000',
@@ -658,10 +668,10 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
   }
 
   // Update telescope FOV size
-  const updateTelescopeFovSize = () => {
+  const updateTelescopeFovSize = (width?: number, height?: number) => {
     if (showTelescopeFov) {
       // Update with current center coordinates if available, otherwise use map center
-      updateFovPosition(telescopeFovCenterRa ?? undefined, telescopeFovCenterDec ?? undefined)
+      updateFovPosition(telescopeFovCenterRa ?? undefined, telescopeFovCenterDec ?? undefined, false, width, height)
     }
   }
 
@@ -788,13 +798,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             <Label className="text-sm font-medium">Catalog Layers</Label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showSimbad ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showSimbad ? 'ring-2 ring-orange-300' : ''}`}
                   style={{backgroundColor: '#ff9900'}}
                 />
-                <Label htmlFor="simbad-toggle" className="text-sm">
+                <Label htmlFor="simbad-toggle" className={`text-sm ${showSimbad ? 'font-medium text-orange-900' : ''}`}>
                   Simbad Objects
                 </Label>
               </div>
@@ -805,13 +815,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showConstellations ? 'bg-green-50 border border-green-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showConstellations ? 'ring-2 ring-green-300' : ''}`}
                   style={{backgroundColor: '#00ff00'}}
                 />
-                <Label htmlFor="constellations-toggle" className="text-sm">
+                <Label htmlFor="constellations-toggle" className={`text-sm ${showConstellations ? 'font-medium text-green-900' : ''}`}>
                   Constellation Stars
                 </Label>
               </div>
@@ -822,13 +832,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showMessier ? 'bg-green-50 border border-green-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showMessier ? 'ring-2 ring-green-300' : ''}`}
                   style={{backgroundColor: '#29a329'}}
                 />
-                <Label htmlFor="messier-toggle" className="text-sm">
+                <Label htmlFor="messier-toggle" className={`text-sm ${showMessier ? 'font-medium text-green-900' : ''}`}>
                   Messier
                 </Label>
               </div>
@@ -839,13 +849,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showNGC ? 'bg-gray-50 border border-gray-300' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showNGC ? 'ring-2 ring-gray-400' : ''}`}
                   style={{backgroundColor: '#cccccc'}}
                 />
-                <Label htmlFor="ngc-toggle" className="text-sm">
+                <Label htmlFor="ngc-toggle" className={`text-sm ${showNGC ? 'font-medium text-gray-900' : ''}`}>
                   NGC
                 </Label>
               </div>
@@ -856,13 +866,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showIC ? 'bg-gray-50 border border-gray-300' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showIC ? 'ring-2 ring-gray-400' : ''}`}
                   style={{backgroundColor: '#cccccc'}}
                 />
-                <Label htmlFor="ic-toggle" className="text-sm">
+                <Label htmlFor="ic-toggle" className={`text-sm ${showIC ? 'font-medium text-gray-900' : ''}`}>
                   IC
                 </Label>
               </div>
@@ -873,13 +883,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showSharpless ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showSharpless ? 'ring-2 ring-blue-300' : ''}`}
                   style={{backgroundColor: '#00afff'}}
                 />
-                <Label htmlFor="sharpless-toggle" className="text-sm">
+                <Label htmlFor="sharpless-toggle" className={`text-sm ${showSharpless ? 'font-medium text-blue-900' : ''}`}>
                   Sharpless
                 </Label>
               </div>
@@ -890,13 +900,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showLDN ? 'bg-yellow-50 border border-yellow-300' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showLDN ? 'ring-2 ring-yellow-400' : ''}`}
                   style={{backgroundColor: '#CBCC49'}}
                 />
-                <Label htmlFor="ldn-toggle" className="text-sm">
+                <Label htmlFor="ldn-toggle" className={`text-sm ${showLDN ? 'font-medium text-yellow-900' : ''}`}>
                   LDN
                 </Label>
               </div>
@@ -907,13 +917,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showLBN ? 'bg-yellow-50 border border-yellow-300' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showLBN ? 'ring-2 ring-yellow-400' : ''}`}
                   style={{backgroundColor: '#CBCC49'}}
                 />
-                <Label htmlFor="lbn-toggle" className="text-sm">
+                <Label htmlFor="lbn-toggle" className={`text-sm ${showLBN ? 'font-medium text-yellow-900' : ''}`}>
                   LBN
                 </Label>
               </div>
@@ -924,13 +934,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showBarnard ? 'bg-cyan-50 border border-cyan-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full"
+                  className={`w-3 h-3 rounded-full transition-all ${showBarnard ? 'ring-2 ring-cyan-300' : ''}`}
                   style={{backgroundColor: '#E0FFFF'}}
                 />
-                <Label htmlFor="barnard-toggle" className="text-sm">
+                <Label htmlFor="barnard-toggle" className={`text-sm ${showBarnard ? 'font-medium text-cyan-900' : ''}`}>
                   Barnard
                 </Label>
               </div>
@@ -953,12 +963,12 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             <Label className="text-sm font-medium">Telescope Field of View</Label>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between p-2 rounded-md transition-colors ${showTelescopeFov ? 'bg-red-50 border border-red-200' : 'bg-gray-50/50'}`}>
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 border-2 border-red-500 bg-red-500/10"
+                  className={`w-3 h-3 border-2 transition-colors ${showTelescopeFov ? 'border-red-500 bg-red-500/20' : 'border-red-300 bg-red-500/10'}`}
                 />
-                <Label htmlFor="telescope-fov-toggle" className="text-sm">
+                <Label htmlFor="telescope-fov-toggle" className={`text-sm ${showTelescopeFov ? 'font-medium text-red-900' : ''}`}>
                   Show FOV Rectangle
                 </Label>
               </div>
@@ -983,7 +993,10 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                       max="180"
                       value={telescopeFovWidth}
                       onChange={(e) => {
-                        setTelescopeFovWidth(Number(e.target.value))
+                        const newWidth = Number(e.target.value)
+                        setTelescopeFovWidth(newWidth)
+                        telescopeFovWidthRef.current = newWidth
+                        setActivePreset(null) // Clear active preset when manually changing
                         updateTelescopeFovSize()
                       }}
                       className="mt-1 h-8 text-xs"
@@ -1000,7 +1013,10 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                       max="180"
                       value={telescopeFovHeight}
                       onChange={(e) => {
-                        setTelescopeFovHeight(Number(e.target.value))
+                        const newHeight = Number(e.target.value)
+                        setTelescopeFovHeight(newHeight)
+                        telescopeFovHeightRef.current = newHeight
+                        setActivePreset(null) // Clear active preset when manually changing
                         updateTelescopeFovSize()
                       }}
                       className="mt-1 h-8 text-xs"
@@ -1012,52 +1028,79 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
                   <Label className="text-xs text-muted-foreground">Presets:</Label>
                   <div className="flex flex-wrap gap-1 mt-1">
                     <Button
-                      variant="outline"
+                      variant={activePreset === 'dslr' ? 'default' : 'outline'}
                       size="sm"
-                      className="h-6 px-2 text-xs"
+                      className={`h-6 px-2 text-xs ${activePreset === 'dslr' ? 'bg-blue-600 text-white' : ''}`}
                       onClick={() => {
                         setTelescopeFovWidth(34)
                         setTelescopeFovHeight(23)
-                        updateTelescopeFovSize()
+                        telescopeFovWidthRef.current = 34
+                        telescopeFovHeightRef.current = 23
+                        setActivePreset('dslr')
+                        updateTelescopeFovSize(34, 23)
                       }}
                     >
                       DSLR (34×23)
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={activePreset === 'ccd' ? 'default' : 'outline'}
                       size="sm"
-                      className="h-6 px-2 text-xs"
+                      className={`h-6 px-2 text-xs ${activePreset === 'ccd' ? 'bg-blue-600 text-white' : ''}`}
                       onClick={() => {
                         setTelescopeFovWidth(17)
                         setTelescopeFovHeight(13)
-                        updateTelescopeFovSize()
+                        telescopeFovWidthRef.current = 17
+                        telescopeFovHeightRef.current = 13
+                        setActivePreset('ccd')
+                        updateTelescopeFovSize(17, 13)
                       }}
                     >
                       CCD (17×13)
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={activePreset === 'smallccd' ? 'default' : 'outline'}
                       size="sm"
-                      className="h-6 px-2 text-xs"
+                      className={`h-6 px-2 text-xs ${activePreset === 'smallccd' ? 'bg-blue-600 text-white' : ''}`}
                       onClick={() => {
                         setTelescopeFovWidth(7)
                         setTelescopeFovHeight(5)
-                        updateTelescopeFovSize()
+                        telescopeFovWidthRef.current = 7
+                        telescopeFovHeightRef.current = 5
+                        setActivePreset('smallccd')
+                        updateTelescopeFovSize(7, 5)
                       }}
                     >
                       Small CCD (7×5)
                     </Button>
                     <Button
-                      variant="outline"
+                      variant={activePreset === 'binoculars' ? 'default' : 'outline'}
                       size="sm"
-                      className="h-6 px-2 text-xs"
+                      className={`h-6 px-2 text-xs ${activePreset === 'binoculars' ? 'bg-blue-600 text-white' : ''}`}
                       onClick={() => {
                         setTelescopeFovWidth(60)
                         setTelescopeFovHeight(40)
-                        updateTelescopeFovSize()
+                        telescopeFovWidthRef.current = 60
+                        telescopeFovHeightRef.current = 40
+                        setActivePreset('binoculars')
+                        updateTelescopeFovSize(60, 40)
                       }}
                     >
                       Binoculars (60×40)
+                    </Button>
+                    <Button
+                      variant={activePreset === 'seestar' ? 'default' : 'outline'}
+                      size="sm"
+                      className={`h-6 px-2 text-xs ${activePreset === 'seestar' ? 'bg-blue-600 text-white' : ''}`}
+                      onClick={() => {
+                        setTelescopeFovWidth(42)
+                        setTelescopeFovHeight(78)
+                        telescopeFovWidthRef.current = 42
+                        telescopeFovHeightRef.current = 78
+                        setActivePreset('seestar')
+                        updateTelescopeFovSize(42, 78)
+                      }}
+                    >
+                      Seestar S50 (42×78)
                     </Button>
                   </div>
                 </div>
