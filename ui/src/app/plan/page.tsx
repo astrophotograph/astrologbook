@@ -22,6 +22,7 @@ import {AstroObject, User} from "@/lib/models"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
 import {useAuth} from "@/hooks/useAuth"
 import {parseCoordinates, calculateAltitudeAtTime, calculateCurrentAzimuth, azimuthToCompassDirection, generateNightAltitudeData, formatTime as formatAstroTime} from "@/lib/astronomy-utils"
+import Script from 'next/script'
 
 interface PlanningItem {
   id: string;
@@ -48,6 +49,7 @@ interface ObservationSchedule {
 }
 
 export default function PlanPage() {
+  const [isLoaded, setIsLoaded] = useState(false);
   const [astroObjects, setAstroObjects] = useState<AstroObject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedObject, setSelectedObject] = useState<AstroObject | null>(null);
@@ -126,14 +128,14 @@ export default function PlanPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
+
         try {
           // Try to get city name from coordinates using a reverse geocoding API
           // Using a simple approach for now, you can enhance this with a proper geocoding service
           const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
           const data = await response.json();
           const city = data.city || data.locality || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-          
+
           setUserLocation({ latitude, longitude, city });
           toast.success(`Location set to ${city}`);
         } catch {
@@ -141,7 +143,7 @@ export default function PlanPage() {
           setUserLocation({ latitude, longitude, city: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}` });
           toast.success("Location obtained");
         }
-        
+
         setLocationLoading(false);
       },
       (error) => {
@@ -176,7 +178,7 @@ export default function PlanPage() {
       if (response.ok) {
         const scheduleData = await response.json();
         setSchedules(scheduleData);
-        
+
         // Find and set active schedule
         const active = scheduleData.find((s: ObservationSchedule) => s.is_active);
         setActiveSchedule(active || null);
@@ -237,13 +239,13 @@ export default function PlanPage() {
       if (response.ok) {
         const updatedSchedule = await response.json();
         setActiveSchedule(updatedSchedule);
-        
+
         // Update schedules list
         setSchedules(prev => prev.map(s => ({
           ...s,
           is_active: s.id === schedule.id
         })));
-        
+
         toast.success(`Switched to "${schedule.name}"`);
       }
     } catch (error) {
@@ -266,7 +268,7 @@ export default function PlanPage() {
 
       if (response.ok) {
         setSchedules(prev => prev.filter(s => s.id !== schedule.id));
-        
+
         if (schedule.is_active) {
           // Switch to the next available schedule
           const remaining = schedules.filter(s => s.id !== schedule.id);
@@ -274,7 +276,7 @@ export default function PlanPage() {
             await switchSchedule(remaining[0]);
           }
         }
-        
+
         toast.success(`Schedule "${schedule.name}" deleted`);
       }
     } catch (error) {
@@ -300,9 +302,9 @@ export default function PlanPage() {
       if (response.ok) {
         const updatedSchedule = await response.json();
         setActiveSchedule(updatedSchedule);
-        
+
         // Update in schedules list
-        setSchedules(prev => prev.map(s => 
+        setSchedules(prev => prev.map(s =>
           s.id === updatedSchedule.id ? updatedSchedule : s
         ));
       }
@@ -389,7 +391,7 @@ export default function PlanPage() {
 
   const removeFromSchedule = async (id: string) => {
     if (!activeSchedule) return;
-    
+
     const updatedItems = activeSchedule.items.filter(item => item.id !== id);
     await updateScheduleItems(updatedItems);
     toast.success('Removed from schedule');
@@ -403,11 +405,11 @@ export default function PlanPage() {
 
   const saveEditedItem = async (updatedItem: PlanningItem) => {
     if (!activeSchedule) return;
-    
-    const updatedItems = activeSchedule.items.map(item => 
+
+    const updatedItems = activeSchedule.items.map(item =>
       item.id === updatedItem.id ? updatedItem : item
     ).sort((a, b) => a.startTime.localeCompare(b.startTime));
-    
+
     await updateScheduleItems(updatedItems);
     toast.success('Schedule item updated');
   };
@@ -437,20 +439,20 @@ export default function PlanPage() {
 
     const updatedItems = [...activeSchedule.items, newItem].sort((a, b) => a.startTime.localeCompare(b.startTime));
     await updateScheduleItems(updatedItems);
-    
+
     // Reset dialog state
     setShowAddToScheduleDialog(false);
     setSelectedRecommendation(null);
     setQuickAddStartTime("");
     setQuickAddDuration(30);
-    
+
     toast.success(`Added ${newItem.objectName} to ${activeSchedule.name}`);
   };
 
   // Handle clicking on a recommendation
   const handleRecommendationClick = (recommendation: typeof selectedRecommendation) => {
     setSelectedRecommendation(recommendation);
-    
+
     // Set a suggested start time (current time + 1 hour, rounded to nearest 15 minutes)
     const now = new Date();
     now.setHours(now.getHours() + 1);
@@ -458,20 +460,20 @@ export default function PlanPage() {
     now.setMinutes(minutes, 0, 0);
     const timeString = now.toTimeString().slice(0, 5);
     setQuickAddStartTime(timeString);
-    
+
     setShowAddToScheduleDialog(true);
   };
 
   // Get schedule conflicts for time visualization
   const getScheduleConflicts = (startTime: string, duration: number) => {
     if (!activeSchedule || !startTime) return [];
-    
+
     const conflicts: PlanningItem[] = [];
     const newEndTime = calculateEndTime(startTime, duration);
-    
+
     activeSchedule.items.forEach(item => {
       const itemEndTime = calculateEndTime(item.startTime, item.duration);
-      
+
       // Check for time overlap
       if (
         (startTime >= item.startTime && startTime < itemEndTime) ||
@@ -481,21 +483,21 @@ export default function PlanPage() {
         conflicts.push(item);
       }
     });
-    
+
     return conflicts;
   };
 
   // Generate altitude data for the selected recommendation
   const getRecommendationAltitudeData = () => {
     if (!selectedRecommendation || !userLocation) return [];
-    
+
     const coords = parseCoordinates(
       selectedRecommendation.metadata_?.ra || selectedRecommendation.ra || '0h 0m 0s',
       selectedRecommendation.metadata_?.dec || selectedRecommendation.dec || '+0° 0\' 0"'
     );
-    
+
     if (!coords) return [];
-    
+
     return generateNightAltitudeData(coords.raDeg, coords.decDeg, userLocation);
   };
 
@@ -503,7 +505,7 @@ export default function PlanPage() {
     // Get current time and use user's location or fallback to NYC
     const now = new Date();
     const coordinates = userLocation || { latitude: 40.7128, longitude: -74.0060 };
-    
+
     // Expanded list of bright, interesting objects categorized by type
     const brightObjects = [
       // Planets (positions are approximate and would need real-time ephemeris for accuracy)
@@ -511,7 +513,7 @@ export default function PlanPage() {
       { name: "Saturn", magnitude: 0.7, type: "Planet", ra: "21h 45m 0s", dec: "-18° 0' 0\"", description: "Beautiful rings visible in telescope" },
       { name: "Mars", magnitude: -1.8, type: "Planet", ra: "5h 15m 0s", dec: "+25° 0' 0\"", description: "Red planet, shows polar caps" },
       { name: "Venus", magnitude: -4.2, type: "Planet", ra: "18h 0m 0s", dec: "-23° 0' 0\"", description: "Brightest planet, shows phases" },
-      
+
       // Bright Stars
       { name: "Sirius", magnitude: -1.46, type: "Star", ra: "6h 45m 9s", dec: "-16° 42' 58\"", description: "Brightest star in the night sky" },
       { name: "Arcturus", magnitude: -0.05, type: "Star", ra: "14h 15m 40s", dec: "+19° 10' 57\"", description: "Orange giant in Boötes" },
@@ -521,13 +523,13 @@ export default function PlanPage() {
       { name: "Procyon", magnitude: 0.34, type: "Star", ra: "7h 39m 18s", dec: "+5° 13' 30\"", description: "White star in Canis Minor" },
       { name: "Betelgeuse", magnitude: 0.50, type: "Star", ra: "5h 55m 10s", dec: "+7° 24' 25\"", description: "Red supergiant in Orion" },
       { name: "Aldebaran", magnitude: 0.85, type: "Star", ra: "4h 35m 55s", dec: "+16° 30' 33\"", description: "Orange giant in Taurus" },
-      
+
       // Double Stars
       { name: "Albireo", magnitude: 3.1, type: "Double Star", ra: "19h 30m 43s", dec: "+27° 57' 35\"", description: "Beautiful gold and blue double star" },
       { name: "Mizar & Alcor", magnitude: 2.3, type: "Double Star", ra: "13h 23m 56s", dec: "+54° 55' 31\"", description: "Famous double star in Big Dipper" },
       { name: "Castor", magnitude: 1.57, type: "Double Star", ra: "7h 34m 36s", dec: "+31° 53' 18\"", description: "Multiple star system in Gemini" },
       { name: "Almach", magnitude: 2.26, type: "Double Star", ra: "2h 3m 54s", dec: "+42° 19' 47\"", description: "Orange and blue double in Andromeda" },
-      
+
       // Open Clusters
       { name: "M45 (Pleiades)", magnitude: 1.6, type: "Open Cluster", ra: "3h 47m 0s", dec: "+24° 7' 0\"", description: "Seven Sisters star cluster" },
       { name: "M44 (Beehive Cluster)", magnitude: 3.7, type: "Open Cluster", ra: "8h 40m 6s", dec: "+19° 59' 0\"", description: "Bright cluster in Cancer" },
@@ -537,7 +539,7 @@ export default function PlanPage() {
       { name: "M36", magnitude: 6.3, type: "Open Cluster", ra: "5h 36m 6s", dec: "+34° 8' 24\"", description: "Cross-shaped cluster in Auriga" },
       { name: "M38", magnitude: 7.4, type: "Open Cluster", ra: "5h 28m 42s", dec: "+35° 50' 0\"", description: "Starfish cluster in Auriga" },
       { name: "M67", magnitude: 6.1, type: "Open Cluster", ra: "8h 50m 24s", dec: "+11° 49' 0\"", description: "Ancient cluster in Cancer" },
-      
+
       // Globular Clusters
       { name: "M13 (Hercules Cluster)", magnitude: 5.8, type: "Globular Cluster", ra: "16h 41m 41s", dec: "+36° 27' 37\"", description: "Spectacular globular cluster" },
       { name: "M92", magnitude: 6.3, type: "Globular Cluster", ra: "17h 17m 7s", dec: "+43° 8' 11\"", description: "Another fine globular in Hercules" },
@@ -545,7 +547,7 @@ export default function PlanPage() {
       { name: "M5", magnitude: 5.6, type: "Globular Cluster", ra: "15h 18m 33s", dec: "+2° 4' 58\"", description: "Bright globular in Serpens" },
       { name: "M4", magnitude: 5.6, type: "Globular Cluster", ra: "16h 23m 35s", dec: "-26° 31' 33\"", description: "Loose globular near Antares" },
       { name: "M22", magnitude: 5.1, type: "Globular Cluster", ra: "18h 36m 24s", dec: "-23° 54' 17\"", description: "Bright southern globular" },
-      
+
       // Galaxies
       { name: "M31 (Andromeda Galaxy)", magnitude: 3.4, type: "Galaxy", ra: "0h 42m 44s", dec: "+41° 16' 9\"", description: "Nearest major galaxy" },
       { name: "M32", magnitude: 8.1, type: "Galaxy", ra: "0h 42m 42s", dec: "+40° 52' 0\"", description: "Companion to Andromeda" },
@@ -555,7 +557,7 @@ export default function PlanPage() {
       { name: "M51 (Whirlpool Galaxy)", magnitude: 8.4, type: "Galaxy", ra: "13h 29m 53s", dec: "+47° 11' 43\"", description: "Face-on spiral with companion" },
       { name: "M101 (Pinwheel Galaxy)", magnitude: 7.9, type: "Galaxy", ra: "14h 3m 13s", dec: "+54° 20' 57\"", description: "Large face-on spiral" },
       { name: "M104 (Sombrero Galaxy)", magnitude: 8.0, type: "Galaxy", ra: "12h 39m 59s", dec: "-11° 37' 23\"", description: "Edge-on galaxy with dark lane" },
-      
+
       // Nebulae
       { name: "M42 (Orion Nebula)", magnitude: 4.0, type: "Nebula", ra: "5h 35m 17s", dec: "-5° 23' 14\"", description: "Stellar nursery in Orion" },
       { name: "M43", magnitude: 9.0, type: "Nebula", ra: "5h 35m 31s", dec: "-5° 16' 3\"", description: "Part of Orion Nebula complex" },
@@ -575,10 +577,10 @@ export default function PlanPage() {
       // Parse coordinates
       const coords = parseCoordinates(obj.ra, obj.dec);
       if (!coords) return false;
-      
+
       // Calculate current altitude
       const altitude = calculateAltitudeAtTime(coords.raDeg, coords.decDeg, coordinates, now);
-      
+
       // Object is visible if it's at least 20 degrees above horizon
       return altitude > 20;
     }).map(obj => {
@@ -586,7 +588,7 @@ export default function PlanPage() {
       const altitude = coords ? calculateAltitudeAtTime(coords.raDeg, coords.decDeg, coordinates, now) : 0;
       const azimuth = coords ? calculateCurrentAzimuth(coords.raDeg, coords.decDeg, coordinates) : 0;
       const direction = azimuthToCompassDirection(azimuth);
-      
+
       return {
         ...obj,
         altitude: Math.round(altitude),
@@ -615,7 +617,7 @@ export default function PlanPage() {
     // Apply object type filter
     let filteredObjects = currentlyVisible;
     if (objectFilter !== "all") {
-      filteredObjects = currentlyVisible.filter(obj => 
+      filteredObjects = currentlyVisible.filter(obj =>
         obj.type.toLowerCase().replace(/\s+/g, '-') === objectFilter
       );
     }
@@ -640,6 +642,9 @@ export default function PlanPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Script src={"https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"}
+              onLoad={() => {setIsLoaded(true)}}
+      />
       <DefaultBreadcrumb user={user || undefined} pageName="Plan" />
       <div className="flex items-center gap-3 mb-8">
         <Telescope className="w-8 h-8 text-blue-400" />
@@ -857,11 +862,11 @@ export default function PlanPage() {
                                   {obj.otype}
                                 </span>
                               </div>
-                              
+
                               <p className="text-sm text-muted-foreground mb-2">
                                 {obj.description}
                               </p>
-                              
+
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="space-y-1">
                                   <div>
@@ -885,7 +890,7 @@ export default function PlanPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="flex flex-col gap-2 ml-4">
                               <Button
                                 variant="ghost"
@@ -970,7 +975,7 @@ export default function PlanPage() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                  
+
                   {/* Schedule Selector */}
                   {schedules.length > 0 && (
                     <div className="flex items-center gap-2 pt-2">
@@ -995,7 +1000,7 @@ export default function PlanPage() {
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      
+
                       {/* Schedule Actions */}
                       {activeSchedule && (
                         <DropdownMenu>
@@ -1015,7 +1020,7 @@ export default function PlanPage() {
                     </div>
                   )}
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   {!activeSchedule && schedules.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -1073,11 +1078,11 @@ export default function PlanPage() {
                               {activeSchedule.items.length} object{activeSchedule.items.length !== 1 ? 's' : ''}
                             </span>
                           </div>
-                          
+
                           {activeSchedule.description && (
                             <p className="text-sm text-muted-foreground">{activeSchedule.description}</p>
                           )}
-                          
+
                           {activeSchedule.items.length > 0 ? (
                             activeSchedule.items.map((item) => (
                               <div
@@ -1159,42 +1164,13 @@ export default function PlanPage() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="starmap" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="starmap">
-                        Local Sky Map
-                      </TabsTrigger>
-                      <TabsTrigger value="aladin">
-                        Aladin Lite Survey
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="starmap">
-                      <div className="relative">
-                        <StarMap 
-                          width={800} 
-                          height={600} 
-                          className="w-full border rounded-lg"
-                        />
-                        <div className="mt-4 text-xs text-muted-foreground">
-                          <p>• <strong>Reset View:</strong> Use the ↻ button to update to current time</p>
-                          <p>• <strong>Customizable Display:</strong> Toggle constellation lines, star names, and Milky Way</p>
-                          <p>• <strong>Real-time Updates:</strong> Map reflects current sky based on your location and time</p>
-                          <p>• <strong>Fullscreen Mode:</strong> Click maximize for detailed sky viewing</p>
-                          <p>• <strong>Interactive Features:</strong> Full sky map with 300+ stars and constellation patterns</p>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="aladin">
-                      <AladinLite 
-                        width={800} 
-                        height={600} 
+                      <AladinLite
+                        width={800}
+                        height={600}
                         className="w-full"
                         userLocation={userLocation}
+                        isLoaded={isLoaded}
                       />
-                    </TabsContent>
-                  </Tabs>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1236,7 +1212,7 @@ export default function PlanPage() {
           <DialogHeader>
             <DialogTitle>Add to Schedule</DialogTitle>
           </DialogHeader>
-          
+
           {selectedRecommendation && (
             <div className="space-y-6">
               {/* Object Details */}
@@ -1249,11 +1225,11 @@ export default function PlanPage() {
                     {selectedRecommendation.otype || selectedRecommendation.type}
                   </span>
                 </div>
-                
+
                 <p className="text-sm text-muted-foreground mb-2">
                   {selectedRecommendation.description}
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Magnitude: </span>
@@ -1372,11 +1348,11 @@ export default function PlanPage() {
                           {activeSchedule?.items.map((item, i) => {
                             const startMinutes = parseInt(item.startTime.split(':')[0]) * 60 + parseInt(item.startTime.split(':')[1]);
                             // const endMinutes = startMinutes + item.duration;
-                            
+
                             // Convert to chart position (assuming 18:00 to 06:00 time range)
                             const startPos = ((startMinutes - 18 * 60) / (12 * 60)) * (chartWidth - 2 * padding);
                             const width = (item.duration / (12 * 60)) * (chartWidth - 2 * padding);
-                            
+
                             if (startPos >= 0 && startPos <= chartWidth - 2 * padding) {
                               return (
                                 <g key={i}>
@@ -1411,7 +1387,7 @@ export default function PlanPage() {
                             const totalMinutes = hours * 60 + minutes;
                             const pos = ((totalMinutes - 18 * 60) / (12 * 60)) * (chartWidth - 2 * padding);
                             const width = (quickAddDuration / (12 * 60)) * (chartWidth - 2 * padding);
-                            
+
                             if (pos >= 0 && pos <= chartWidth - 2 * padding) {
                               return (
                                 <g>
@@ -1439,7 +1415,7 @@ export default function PlanPage() {
                             return null;
                           })()}
                         </svg>
-                        
+
                         {/* Legend */}
                         <div className="flex flex-wrap gap-4 mt-2 text-xs">
                           <div className="flex items-center gap-1">
@@ -1562,13 +1538,13 @@ export default function PlanPage() {
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowAddToScheduleDialog(false)}
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={addRecommendationToSchedule}
                   disabled={!activeSchedule || !quickAddStartTime}
                 >

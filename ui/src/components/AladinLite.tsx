@@ -1,15 +1,19 @@
-"use client";
+"use client"
 
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { MapPin, RotateCcw, Layers, Telescope } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import {useEffect, useRef, useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {Label} from "@/components/ui/label"
+import {MapPin, RotateCcw, Layers, Telescope} from "lucide-react"
+import {Switch} from "@/components/ui/switch"
+import {Input} from "@/components/ui/input"
+import {clearTimeout} from "node:timers"
+import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
+import Script from "next/script"
 
 interface AladinLiteProps {
+  isLoaded?: boolean;
   width?: number;
   height?: number;
   className?: string;
@@ -55,8 +59,192 @@ declare global {
   }
 }
 
-export function AladinLite({ width = 800, height = 600, className = "", userLocation }: AladinLiteProps) {
-  const divRef = useRef<HTMLDivElement>(null);
+type Catalog = {
+  id: string;
+  name: string;
+  targets: null | Array<unknown>;
+  source: string;
+  url: string;
+  options: Record<string, unknown>;
+  AladinCatalog: unknown;
+  color?: string | undefined;
+}
+
+const CatalogSources: Record<string, Catalog> = {
+  simbad: {
+    id: 'simbad',
+    targets: null,
+    source: 'simbad',
+    name: 'SIMBAD  ',
+    AladinCatalog: null,
+    url: 'https://hipscat.cds.unistra.fr/HiPSCatService/SIMBAD',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  messier: {
+    id: 'messier',
+    name: "Messier",
+    targets: null,
+    url: "http://localhost:3000/catalogs/Messier.json",
+    source: "simbad",
+    AladinCatalog: null,
+    color: '#29a329',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  ngc: {
+    id: 'ngc',
+    name: "NGC",
+    targets: null,
+    url: "http://localhost:3000/catalogs/OpenNGC.json",
+    source: "openngc",
+    AladinCatalog: null,
+    color: '#cccccc',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  ic: {
+    id: 'ic',
+    name: "IC",
+    targets: null,
+    url: "http://localhost:3000/catalogs/OpenIC.json",
+    source: "openngc",
+    AladinCatalog: null,
+    color: '#cccccc',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  sharpless: {
+    id: 'sharpless',
+    name: "Sharpless",
+    targets: null,
+    url: "http://localhost:3000/catalogs/Sharpless.json",
+    source: "simbad",
+    AladinCatalog: null,
+    color: '#00afff',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  ldn: {
+    id: 'ldn',
+    name: "LDN",
+    targets: null,
+    url: "http://localhost:3000/catalogs/LDN.json",
+    source: "vizier",
+    AladinCatalog: null,
+    color: '#CBCC49',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  lbn: {
+    id: 'lbn',
+    name: "LBN",
+    targets: null,
+    url: "http://localhost:3000/catalogs/LBN.json",
+    source: "vizier",
+    AladinCatalog: null,
+    color: '#CBCC49',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },
+  barnard: {
+    id: 'barnard',
+    name: "Barnard",
+    targets: null,
+    url: "http://localhost:3000/catalogs/Barnard.json",
+    source: "vizier",
+    AladinCatalog: null,
+    color: '#E0FFFF',
+    options: {shape: 'circle', sourceSize: 8, color: '#318d80'},
+  },  // light cyan
+}
+
+function buildCatalogOverlay(aladin, catalogName: keyof typeof CatalogSources) {
+  if (!aladin || !window.A) return
+
+  console.log('Building catalog overlay:', catalogName)
+  const catalogInfo = CatalogSources[catalogName]
+  const catalog = window.A.catalogHiPS(catalogInfo.url, {
+    id: catalogInfo.id,
+    name: catalogInfo.name,
+    shape: catalogInfo.options.shape,
+    sourceSize: catalogInfo.options.sourceSize,
+    color: catalogInfo.options.color,
+    onClick: 'showTable',
+  })
+
+  catalog.hide()
+
+  aladin.addCatalog(catalog)
+
+  return catalog
+}
+
+const hoursToDeg = 15
+
+function catalogToDataObject(target) {
+  // target array
+  //   0      1     2      3       4      5       6      7       8      9
+  // ["CAT", "RA", "DEC", "TYPE", "CON", "BMAG", "DST", "NAME", "INFO", "SIZE"]
+  const catname = target[0]    // CAT
+  const extname = target[7]    // NAME
+  let dispname
+  let size
+  if (extname != "") {
+    dispname = catname + ', ' + extname
+  } else {
+    dispname = catname
+  }
+  if (target.length > 9) {
+    size = target[9]
+  } else {
+    size = 0
+  }
+  return {
+    name: dispname,
+    wikiname: catname,
+    info: {
+      radec: target[1].toFixed(5) + ' ' + target[2].toFixed(5),
+      type: target[3],
+      constellation: target[4],
+      mag: target[5],
+      size: size,
+      distance: target[6],
+      notes: target[8],
+    },
+  }
+}
+
+async function buildJsonCatalog(aladin, catalogName: keyof typeof CatalogSources) {
+  if (!aladin || !window.A) return
+
+  const catalog = CatalogSources[catalogName]
+
+  if (catalog.AladinCatalog) return
+
+  catalog.AladinCatalog = window.A.catalog({
+    id: catalog.id,
+    name: catalogName,
+    labelColumn: 'name',
+    displayLabel: true,
+    labelColor: catalog.options.color,
+    labelFont: '12px sans-serif',
+  })
+  catalog.AladinCatalog.hide()
+
+  const response = await fetch(catalog.url)
+  catalog.targets = (await response.json()).data
+
+  for (let i = 0; i < catalog.targets.length; i++) {
+    if (i == 0) {
+      console.log("addJsonToAladinCatalog:add", catalog.targets[i], catalogName)
+    }
+    catalog.AladinCatalog.addSources(
+      window.A.source(
+        catalog.targets[i][1] * hoursToDeg,
+        catalog.targets[i][2],
+        catalogToDataObject(catalog.targets[i])))
+  }
+
+  aladin.addCatalog(catalog.AladinCatalog)
+}
+
+
+export function AladinLite({width = 800, height = 600, className = "", userLocation, isLoaded}: AladinLiteProps) {
+  const divRef = useRef<HTMLDivElement>(null)
   const aladinRef = useRef<{
     setImageSurvey: (survey: string) => void;
     setProjection: (projection: string) => void;
@@ -70,59 +258,29 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
     view: {
       catalogHpxFOV: () => number;
     };
-  } | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [survey, setSurvey] = useState("P/DSS2/color");
-  const [projection, setProjection] = useState("SIN");
-  const [fov, setFov] = useState(60);
-  const [showSimbad, setShowSimbad] = useState(false);
-  const [showHipparcos, setShowHipparcos] = useState(true);
-  const [showConstellations, setShowConstellations] = useState(true);
-  const [showTelescopeFov, setShowTelescopeFov] = useState(false);
-  const [telescopeFovWidth, setTelescopeFovWidth] = useState(30); // arcminutes
-  const [telescopeFovHeight, setTelescopeFovHeight] = useState(20); // arcminutes
-  const simbadCatalogRef = useRef<unknown>(null);
-  const hipparcosRef = useRef<unknown>(null);
-  const constellationsRef = useRef<unknown>(null);
-  const telescopeFovOverlayRef = useRef<unknown>(null);
-
-  // Load Aladin Lite script
-  useEffect(() => {
-    const loadAladinLite = () => {
-      if (window.A) {
-        setIsLoaded(true);
-        setIsLoading(false);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js';
-      script.onload = () => {
-        setIsLoaded(true);
-        setIsLoading(false);
-      };
-      script.onerror = () => {
-        console.error('Failed to load Aladin Lite');
-        setIsLoading(false);
-      };
-      document.head.appendChild(script);
-    };
-
-    loadAladinLite();
-  }, []);
+  } | null>(null)
+  const [survey, setSurvey] = useState("P/DSS2/color")
+  const [projection, setProjection] = useState("SIN")
+  const [fov, setFov] = useState(60)
+  const [showSimbad, setShowSimbad] = useState(false)
+  const [showHipparcos, setShowHipparcos] = useState(true)
+  const [showConstellations, setShowConstellations] = useState(true)
+  const [showTelescopeFov, setShowTelescopeFov] = useState(false)
+  const [telescopeFovWidth, setTelescopeFovWidth] = useState(30) // arcminutes
+  const [telescopeFovHeight, setTelescopeFovHeight] = useState(20) // arcminutes
+  const simbadCatalogRef = useRef<unknown>(null)
+  const constellationsRef = useRef<unknown>(null)
+  const telescopeFovOverlayRef = useRef<unknown>(null)
 
   // Initialize Aladin Lite
   useEffect(() => {
-    if (!isLoaded || !divRef.current || aladinRef.current) return;
+    if (!isLoaded || !divRef.current || aladinRef.current) return
 
     try {
-      const A = window.A;
-      
-      const aladin = A.aladin(divRef.current, {
-        survey: survey,
-        projection: projection,
-        fov: fov,
+      aladinRef.current = window.A.aladin(divRef.current, {
+        survey,
+        projection,
+        fov,
         target: 'M31', // Default target
         cooFrame: 'ICRS',
         showReticle: true,
@@ -136,228 +294,192 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
         showCooGrid: false,
         reticleColor: '#ff0000',
         reticleSize: 22,
-        log: false
-      });
+        log: false,
+      })
 
-      aladinRef.current = aladin;
-
-      // Add Hipparcos catalog for enhanced viewing
-      const hipparcosCat = A.catalog({
-        name: 'Hipparcos',
-        sourceSize: 8,
-        color: '#ffffff',
-        onClick: 'showTable'
-      });
-      aladin.addCatalog(hipparcosCat);
-      hipparcosRef.current = hipparcosCat;
-
-      // Add constellation lines
-      const constellationsCat = A.catalog({
-        name: 'Constellations',
-        sourceSize: 5,
-        color: '#00ff00',
-        lineWidth: 2
-      });
-      aladin.addCatalog(constellationsCat);
-      constellationsRef.current = constellationsCat;
+      // // Add constellation lines
+      // const constellationsCat = window.A.catalog({
+      //   name: 'Constellations',
+      //   sourceSize: 5,
+      //   color: '#00ff00',
+      //   lineWidth: 2,
+      // })
+      // aladin.addCatalog(constellationsCat)
+      // constellationsRef.current = constellationsCat
 
     } catch (error) {
-      console.error('Error initializing Aladin Lite:', error);
+      console.error('Error initializing Aladin Lite:', error)
     }
-  }, [isLoaded, survey, projection, fov]);
+  }, [survey, projection, setProjection, fov, isLoaded])
+
+  useEffect(() => {
+    if (!aladinRef.current || !window.A) return
+
+    buildJsonCatalog(aladinRef.current, 'barnard')
+    buildJsonCatalog(aladinRef.current, 'lbn')
+    buildJsonCatalog(aladinRef.current, 'ldn')
+    buildJsonCatalog(aladinRef.current, 'messier')
+    buildJsonCatalog(aladinRef.current, 'ngc')
+    buildJsonCatalog(aladinRef.current, 'sharpless')
+  }, [window.A, aladinRef.current])
 
   // Handle survey change
   const changeSurvey = (newSurvey: string) => {
-    setSurvey(newSurvey);
+    setSurvey(newSurvey)
     if (aladinRef.current) {
-      aladinRef.current.setImageSurvey(newSurvey);
+      aladinRef.current.setImageSurvey(newSurvey)
     }
-  };
+  }
 
   // Handle projection change
   const changeProjection = (newProjection: string) => {
-    setProjection(newProjection);
+    setProjection(newProjection)
     if (aladinRef.current) {
-      aladinRef.current.setProjection(newProjection);
+      aladinRef.current.setProjection(newProjection)
     }
-  };
+  }
 
   // Handle field of view change
   const changeFov = (newFov: number) => {
-    setFov(newFov);
+    setFov(newFov)
     if (aladinRef.current) {
-      aladinRef.current.setFoV(newFov);
+      aladinRef.current.setFoV(newFov)
     }
-  };
+  }
 
   // Go to specific coordinates
   const gotoObject = (target: string) => {
     if (aladinRef.current) {
-      aladinRef.current.gotoObject(target);
+      aladinRef.current.gotoObject(target)
     }
-  };
+  }
 
   // Reset view
   const resetView = () => {
     if (aladinRef.current) {
-      aladinRef.current.gotoObject('M31');
-      changeFov(60);
+      aladinRef.current.gotoObject('M31')
+      changeFov(60)
     }
-  };
+  }
 
   // Go to zenith (overhead position based on user location)
   const gotoZenith = () => {
     if (aladinRef.current && userLocation) {
       // For zenith, we would need current LST calculation
       // For now, just center on a prominent object
-      aladinRef.current.gotoObject('Polaris');
+      aladinRef.current.gotoObject('Polaris')
     }
-  };
+  }
 
   // Toggle Simbad catalog
   const toggleSimbad = async (enabled: boolean) => {
-    setShowSimbad(enabled);
-    
-    if (!aladinRef.current || !window.A) return;
-    
+    setShowSimbad(enabled)
+
+    if (!aladinRef.current || !window.A) return
+
     if (enabled) {
       // Add Simbad catalog
       if (!simbadCatalogRef.current) {
         try {
-          // Use a basic Simbad catalog approach
-          const simbadCat = window.A.catalog({
-            name: 'Simbad Objects',
-            sourceSize: 12,
-            color: '#ff9900',
-            onClick: 'showTable',
-            shape: 'square'
-          });
-          
-          // For demo purposes, add some sample Simbad objects
-          // In a real implementation, this would query Simbad dynamically
-          const sampleObjects = [
-            { name: 'M31', ra: 10.6847, dec: 41.2691, type: 'Galaxy' },
-            { name: 'M42', ra: 83.8221, dec: -5.3911, type: 'Nebula' },
-            { name: 'M45', ra: 56.75, dec: 24.1167, type: 'Open Cluster' },
-            { name: 'M13', ra: 250.423, dec: 36.4613, type: 'Globular Cluster' },
-            { name: 'Vega', ra: 279.2341, dec: 38.7837, type: 'Star' },
-            { name: 'Sirius', ra: 101.287, dec: -16.7161, type: 'Star' }
-          ];
-          
-          // Add sources to catalog
-          sampleObjects.forEach(obj => {
-            simbadCat.addSources([{
-              name: obj.name,
-              ra: obj.ra,
-              dec: obj.dec,
-              data: { type: obj.type }
-            }]);
-          });
-          
-          aladinRef.current.addCatalog(simbadCat);
-          simbadCatalogRef.current = simbadCat;
+          simbadCatalogRef.current = buildCatalogOverlay(aladinRef.current, 'simbad')
         } catch (error) {
-          console.error('Error adding Simbad catalog:', error);
+          console.error('Error adding Simbad catalog:', error)
         }
       }
+      simbadCatalogRef.current.show()
     } else {
-      // Remove Simbad catalog
-      if (simbadCatalogRef.current) {
-        // Note: Aladin Lite doesn't have a direct removeCatalog method
-        // The catalog will be hidden but not completely removed
-        simbadCatalogRef.current = null;
-      }
+      simbadCatalogRef.current.hide()
     }
-  };
+  }
 
   // Toggle Hipparcos catalog
   const toggleHipparcos = (enabled: boolean) => {
-    setShowHipparcos(enabled);
+    setShowHipparcos(enabled)
     // Implementation would be similar to Simbad toggle
     // For now, we'll just update the state
-  };
+  }
 
   // Toggle constellation lines
   const toggleConstellations = (enabled: boolean) => {
-    setShowConstellations(enabled);
+    setShowConstellations(enabled)
     // Implementation would be similar to other toggles
     // For now, we'll just update the state
-  };
+  }
 
   // Toggle telescope field of view
   const toggleTelescopeFov = (enabled: boolean) => {
-    setShowTelescopeFov(enabled);
-    
-    if (!aladinRef.current || !window.A) return;
-    
+    setShowTelescopeFov(enabled)
+
+    if (!aladinRef.current || !window.A) return
+
     if (enabled) {
       // Add telescope FOV overlay
       if (!telescopeFovOverlayRef.current) {
         try {
           // Get current center coordinates
-          const [ra, dec] = aladinRef.current.getRaDec();
-          
+          const [ra, dec] = aladinRef.current.getRaDec()
+
           // Convert arcminutes to degrees
-          const widthDeg = telescopeFovWidth / 60;
-          const heightDeg = telescopeFovHeight / 60;
-          
+          const widthDeg = telescopeFovWidth / 60
+          const heightDeg = telescopeFovHeight / 60
+
           // Create a graphic overlay for the telescope FOV
           const overlay = window.A.graphicOverlay({
             color: '#ff0000',
             lineWidth: 2,
-            name: 'Telescope FOV'
-          });
-          
+            name: 'Telescope FOV',
+          })
+
           // Create a rectangle representing the telescope field of view
           const fovRect = window.A.rect(ra, dec, widthDeg, heightDeg, {
             color: '#ff0000',
             lineWidth: 2,
             fillColor: '#ff0000',
-            fillOpacity: 0.1
-          });
-          
-          overlay.add(fovRect);
-          aladinRef.current.addOverlay(overlay);
-          telescopeFovOverlayRef.current = overlay;
+            fillOpacity: 0.1,
+          })
+
+          overlay.add(fovRect)
+          aladinRef.current.addOverlay(overlay)
+          telescopeFovOverlayRef.current = overlay
         } catch (error) {
-          console.error('Error adding telescope FOV overlay:', error);
+          console.error('Error adding telescope FOV overlay:', error)
         }
       }
     } else {
       // Remove telescope FOV overlay
       if (telescopeFovOverlayRef.current && aladinRef.current) {
         try {
-          aladinRef.current.removeOverlay(telescopeFovOverlayRef.current);
-          telescopeFovOverlayRef.current = null;
+          aladinRef.current.removeOverlay(telescopeFovOverlayRef.current)
+          telescopeFovOverlayRef.current = null
         } catch (error) {
-          console.error('Error removing telescope FOV overlay:', error);
+          console.error('Error removing telescope FOV overlay:', error)
         }
       }
     }
-  };
+  }
 
   // Update telescope FOV size
   const updateTelescopeFovSize = () => {
     if (showTelescopeFov && telescopeFovOverlayRef.current) {
       // Remove old overlay and create new one with updated dimensions
-      toggleTelescopeFov(false);
-      setTimeout(() => toggleTelescopeFov(true), 100);
+      toggleTelescopeFov(false)
+      setTimeout(() => toggleTelescopeFov(true), 100)
     }
-  };
+  }
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
+            <MapPin className="w-5 h-5"/>
             Aladin Lite Sky Survey
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div 
+          <div
             className="flex items-center justify-center border rounded-lg bg-muted/50"
-            style={{ width: width, height: height }}
+            style={{width: width, height: height}}
           >
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -366,45 +488,19 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
           </div>
         </CardContent>
       </Card>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Aladin Lite Sky Survey
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div 
-            className="flex items-center justify-center border rounded-lg bg-muted/50"
-            style={{ width: width, height: height }}
-          >
-            <div className="text-center">
-              <p className="text-muted-foreground">Failed to load Aladin Lite</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Please check your internet connection and try again.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    )
   }
 
   return (
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MapPin className="w-5 h-5" />
+          <MapPin className="w-5 h-5"/>
           Aladin Lite Sky Survey
         </CardTitle>
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4" />
+            <MapPin className="w-4 h-4"/>
             <span>
               Interactive astronomical sky survey
             </span>
@@ -416,7 +512,7 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
               onClick={resetView}
               title="Reset view to M31"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4"/>
             </Button>
             {userLocation && (
               <Button
@@ -425,7 +521,7 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                 onClick={gotoZenith}
                 title="Go to zenith (overhead)"
               >
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4"/>
               </Button>
             )}
           </div>
@@ -438,7 +534,7 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
             <Label htmlFor="survey-select">Sky Survey</Label>
             <Select value={survey} onValueChange={changeSurvey}>
               <SelectTrigger className="mt-1">
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="P/DSS2/color">DSS2 Color</SelectItem>
@@ -450,12 +546,12 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
               </SelectContent>
             </Select>
           </div>
-          
+
           <div>
             <Label htmlFor="projection-select">Projection</Label>
             <Select value={projection} onValueChange={changeProjection}>
               <SelectTrigger className="mt-1">
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="SIN">Orthographic (SIN)</SelectItem>
@@ -472,7 +568,7 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
             <Label htmlFor="fov-select">Field of View</Label>
             <Select value={fov.toString()} onValueChange={(value) => changeFov(Number(value))}>
               <SelectTrigger className="mt-1">
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="180">180° (All Sky)</SelectItem>
@@ -490,15 +586,15 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
         {/* Layer Controls */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4" />
+            <Layers className="w-4 h-4"/>
             <Label className="text-sm font-medium">Catalog Layers</Label>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: '#ff9900' }}
+                  style={{backgroundColor: '#ff9900'}}
                 />
                 <Label htmlFor="simbad-toggle" className="text-sm">
                   Simbad Objects
@@ -510,12 +606,12 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                 onCheckedChange={toggleSimbad}
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: '#ffffff', border: '1px solid #666' }}
+                  style={{backgroundColor: '#ffffff', border: '1px solid #666'}}
                 />
                 <Label htmlFor="hipparcos-toggle" className="text-sm">
                   Hipparcos Stars
@@ -527,12 +623,12 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                 onCheckedChange={toggleHipparcos}
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: '#00ff00' }}
+                  style={{backgroundColor: '#00ff00'}}
                 />
                 <Label htmlFor="constellations-toggle" className="text-sm">
                   Constellation Lines
@@ -553,13 +649,13 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
         {/* Telescope FOV Controls */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-3">
-            <Telescope className="w-4 h-4" />
+            <Telescope className="w-4 h-4"/>
             <Label className="text-sm font-medium">Telescope Field of View</Label>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div 
+                <div
                   className="w-3 h-3 border-2 border-red-500 bg-red-500/10"
                 />
                 <Label htmlFor="telescope-fov-toggle" className="text-sm">
@@ -572,7 +668,7 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                 onCheckedChange={toggleTelescopeFov}
               />
             </div>
-            
+
             {showTelescopeFov && (
               <div className="pl-6 space-y-3">
                 <div className="grid grid-cols-2 gap-4">
@@ -587,8 +683,8 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       max="180"
                       value={telescopeFovWidth}
                       onChange={(e) => {
-                        setTelescopeFovWidth(Number(e.target.value));
-                        updateTelescopeFovSize();
+                        setTelescopeFovWidth(Number(e.target.value))
+                        updateTelescopeFovSize()
                       }}
                       className="mt-1 h-8 text-xs"
                     />
@@ -604,14 +700,14 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       max="180"
                       value={telescopeFovHeight}
                       onChange={(e) => {
-                        setTelescopeFovHeight(Number(e.target.value));
-                        updateTelescopeFovSize();
+                        setTelescopeFovHeight(Number(e.target.value))
+                        updateTelescopeFovSize()
                       }}
                       className="mt-1 h-8 text-xs"
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs text-muted-foreground">Presets:</Label>
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -620,9 +716,9 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        setTelescopeFovWidth(34);
-                        setTelescopeFovHeight(23);
-                        updateTelescopeFovSize();
+                        setTelescopeFovWidth(34)
+                        setTelescopeFovHeight(23)
+                        updateTelescopeFovSize()
                       }}
                     >
                       DSLR (34×23)
@@ -632,9 +728,9 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        setTelescopeFovWidth(17);
-                        setTelescopeFovHeight(13);
-                        updateTelescopeFovSize();
+                        setTelescopeFovWidth(17)
+                        setTelescopeFovHeight(13)
+                        updateTelescopeFovSize()
                       }}
                     >
                       CCD (17×13)
@@ -644,9 +740,9 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        setTelescopeFovWidth(7);
-                        setTelescopeFovHeight(5);
-                        updateTelescopeFovSize();
+                        setTelescopeFovWidth(7)
+                        setTelescopeFovHeight(5)
+                        updateTelescopeFovSize()
                       }}
                     >
                       Small CCD (7×5)
@@ -656,9 +752,9 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
                       size="sm"
                       className="h-6 px-2 text-xs"
                       onClick={() => {
-                        setTelescopeFovWidth(60);
-                        setTelescopeFovHeight(40);
-                        updateTelescopeFovSize();
+                        setTelescopeFovWidth(60)
+                        setTelescopeFovHeight(40)
+                        updateTelescopeFovSize()
                       }}
                     >
                       Binoculars (60×40)
@@ -720,10 +816,10 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
         </div>
 
         {/* Aladin container */}
-        <div 
+        <div
           ref={divRef}
           className="border rounded-lg"
-          style={{ width: width, height: height }}
+          style={{width: width, height: height}}
         />
 
         {/* Instructions */}
@@ -738,5 +834,5 @@ export function AladinLite({ width = 800, height = 600, className = "", userLoca
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
