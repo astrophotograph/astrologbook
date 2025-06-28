@@ -16,7 +16,7 @@ import {ObjectAltitudeDialog} from "@/components/object-altitude-dialog"
 import {StarMap} from "@/components/StarMap"
 import {AladinLite} from "@/components/AladinLite"
 import {EditScheduleItemDialog} from "@/components/edit-schedule-item-dialog"
-import {Calendar, ChevronDown, Clock, Edit, Info, Map, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
+import {Calendar, ChevronDown, ChevronLeft, ChevronRight, Clock, Edit, Info, Map, MapPin, MoreVertical, Plus, Search, Telescope, Trash2} from "lucide-react"
 import {toast} from "sonner"
 import {AstroObject, User} from "@/lib/models"
 import {DefaultBreadcrumb} from "@/components/default-breadcrumb"
@@ -90,6 +90,7 @@ export default function PlanPage() {
   const [quickAddDuration, setQuickAddDuration] = useState(30);
   const [showEditItemDialog, setShowEditItemDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<PlanningItem | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { user: clerkUser, isSQLiteMode } = useAuth();
 
@@ -651,9 +652,9 @@ export default function PlanPage() {
         <h1 className="text-3xl font-bold">Astronomy Planning</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className={`grid gap-6 transition-all duration-300 ${sidebarCollapsed ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-4'}`}>
         {/* Main Content */}
-        <div className="lg:col-span-3">
+        <div className={`${sidebarCollapsed ? 'col-span-1' : 'lg:col-span-3'}`}>
           <Tabs defaultValue="lookup" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="lookup" className="flex items-center gap-2">
@@ -1178,10 +1179,29 @@ export default function PlanPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
-          <WeatherConditions />
-          <MoonPhase />
-          <StarMap width={350} height={350} />
+        <div className={`relative transition-all duration-300 ${sidebarCollapsed ? 'hidden lg:block lg:w-12' : 'space-y-6'}`}>
+          {/* Sidebar Toggle Button */}
+          <div className="absolute -left-4 top-0 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="h-8 w-8 p-0 bg-white shadow-md hover:shadow-lg transition-shadow"
+            >
+              {sidebarCollapsed ? (
+                <ChevronLeft className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+          
+          {/* Sidebar Content */}
+          <div className={`transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <WeatherConditions />
+            <MoonPhase />
+            {/*<StarMap width={350} height={350} />*/}
+          </div>
         </div>
       </div>
 

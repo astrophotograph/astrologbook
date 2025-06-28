@@ -736,6 +736,13 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
         </div>
       </CardHeader>
       <CardContent>
+        {/* Aladin container */}
+        <div
+          ref={divRef}
+          className="border rounded-lg w-full mb-6"
+          style={{height: height}}
+        />
+        
         {/* Controls */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
@@ -1172,13 +1179,6 @@ export function AladinLite({width = 800, height = 600, className = "", userLocat
             Vega
           </Button>
         </div>
-
-        {/* Aladin container */}
-        <div
-          ref={divRef}
-          className="border rounded-lg w-full"
-          style={{height: height}}
-        />
 
         {/* Instructions */}
         <div className="mt-4 text-xs text-muted-foreground space-y-1">
