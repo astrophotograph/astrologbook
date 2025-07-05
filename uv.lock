@@ -45,6 +45,7 @@ dependencies = [
     { name = "pytz" },
     { name = "skyfield" },
     { name = "starplot" },
+    { name = "typer" },
     { name = "tzwhere" },
     { name = "uvicorn" },
 ]
@@ -66,6 +67,7 @@ requires-dist = [
     { name = "pytz", specifier = ">=2025.2" },
     { name = "skyfield", specifier = ">=1.52" },
     { name = "starplot", specifier = ">=0.15.6" },
+    { name = "typer", specifier = ">=0.15.2" },
     { name = "tzwhere", specifier = ">=3.0.3" },
     { name = "uvicorn", specifier = ">=0.34.0" },
 ]

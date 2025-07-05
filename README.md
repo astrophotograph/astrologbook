@@ -6,7 +6,26 @@ NOTE: this is a work in progress. It is written as a
 separate module so it can be used standalone, in addition
 to hopefully integrating it eventually with SeestarALP.
 
-# Script
+
+- ui - frontend in React
+- server - simple Python API
+- cli - majority of CLI code for scanning, loading, and managing images
+
+
+# Configuration file
+
+Everything is driven by a configuration file.
+
+Format:
+
+```
+include = *.fit
+exclude = ._Light*
+```
+
+# CLI
+
+For the latest usage: 
 
 ```shell
 uv run alog.py --help
@@ -21,3 +40,4 @@ By default the web service usings a sqlite3 database.
 ```shell
 uv run fastapi dev main.py
 ```
+

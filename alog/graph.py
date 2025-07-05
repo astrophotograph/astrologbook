@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import math
-from skyfield.api import Star, load, wgs84
+from skyfield.api import load
 from skyfield.data import hipparcos
 from skyfield.named_stars import named_star_dict
 

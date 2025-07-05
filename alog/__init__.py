@@ -1,0 +1,1 @@
+"""Astro Log Book CLI."""

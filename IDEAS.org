@@ -8,3 +8,8 @@ Commands to implement:
 
 - [ ] manifest upload - using manifest, bundles raw images and uploads them to database and S3
 
+Architecture:
+- UI in React + Vite (No NextJS)
+- Backend and scripts in Python
+  - Scanning and indexing
+  - Simple web service in Flask

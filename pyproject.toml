@@ -20,6 +20,7 @@ dependencies = [
     "pytz>=2025.2",
     "skyfield>=1.52",
     "starplot>=0.15.6",
+    "typer>=0.15.2",
     "tzwhere>=3.0.3",
     "uvicorn>=0.34.0",
 ]
